@@ -6,18 +6,19 @@
   <title>Look Up</title>
   <meta name="description" content="Saw a shape in the clouds? Photograph the sky, trace what you see, and send it to someone far away as a postcard, a polaroid or a story. Free, no account, and your photo stays on your phone.">
   <meta name="color-scheme" content="light">
-  <meta name="theme-color" content="#f6f2ea">
+  <meta name="theme-color" content="#9cc7f2">
   <meta property="og:title" content="Look Up: saw a shape in the clouds? Send it to someone.">
   <meta property="og:description" content="Photograph the sky, trace the shape you see, and send it to someone far away. Free. Your photo stays on your phone.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://look-up-sky.vercel.app/">
-  <meta property="og:image" content="https://look-up-sky.vercel.app/assets/og.jpg">
+  <meta property="og:image" content="https://look-up-sky.vercel.app/assets/og-v2.jpg">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Look Up: saw a shape in the clouds? Send it to someone.">
   <meta name="twitter:description" content="Photograph the sky, trace the shape you see, and send it to someone far away. Free. Your photo stays on your phone.">
-  <meta name="twitter:image" content="https://look-up-sky.vercel.app/assets/og.jpg">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231f3a5f'/%3E%3Cpath d='M7 17.5h9.5a3.6 3.6 0 0 0 .5-7.2 5 5 0 0 0-9.6-.6A3.9 3.9 0 0 0 7 17.5z' fill='none' stroke='%23fffdf8' stroke-width='1.7' stroke-linejoin='round'/%3E%3C/svg%3E">
-  <link rel="preload" href="fonts/caveat-600.woff2" as="font" type="font/woff2" crossorigin>
+  <meta name="twitter:image" content="https://look-up-sky.vercel.app/assets/og-v2.jpg">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='0' y2='1'%3E%3Cstop offset='0' stop-color='%239cc7f2'/%3E%3Cstop offset='1' stop-color='%23ffd9c0'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='32' height='32' rx='8' fill='url(%23g)'/%3E%3Ccircle cx='21' cy='11' r='6' fill='%23ffc766'/%3E%3Cpath d='M9 25h13a4.5 4.5 0 0 0 .8-8.9A6.5 6.5 0 0 0 10.4 17 4.2 4.2 0 0 0 9 25z' fill='%23fff' stroke='%231d2b53' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="preload" href="fonts/fraunces-700.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/figtree-var.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="src/styles.css">
   <!-- Vercel Web Analytics (page views). Same-origin once deployed; a harmless 404 until it is switched on in the Vercel dashboard. -->
   <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
@@ -31,22 +32,59 @@
     </div>
   </noscript>
 
+  <!-- one little star shape, reused for every sparkle -->
+  <svg class="sprite" width="0" height="0" aria-hidden="true" focusable="false"><defs><symbol id="sp" viewBox="0 0 24 24"><path d="M12 1c.8 6.5 4.5 10.2 11 11-6.5.8-10.2 4.5-11 11-.8-6.5-4.5-10.2-11-11 6.5-.8 10.2-4.5 11-11z"/></symbol></defs></svg>
+
+  <!-- the sky: one soft backdrop behind every screen. Its colours change with the screen (body[data-screen]). -->
+  <div class="sky" aria-hidden="true">
+    <i class="sg sg-landing"></i>
+    <i class="sg sg-trace"></i>
+    <i class="sg sg-words"></i>
+    <i class="sg sg-look"></i>
+    <i class="sg sg-making"></i>
+    <i class="sg sg-done"></i>
+    <i class="sg sg-soft"></i>
+    <div class="sun"><i></i></div>
+    <div class="clouds">
+      <span class="puff cl cl1"></span>
+      <span class="puff cl cl2"></span>
+      <span class="puff cl cl3"></span>
+      <span class="puff cl cl4"></span>
+      <span class="puff cl cl5"></span>
+      <span class="puff cl cl6"></span>
+    </div>
+    <div class="stars">
+      <svg class="sp s1" viewBox="0 0 24 24"><use href="#sp"/></svg>
+      <svg class="sp s2 g" viewBox="0 0 24 24"><use href="#sp"/></svg>
+      <svg class="sp s3" viewBox="0 0 24 24"><use href="#sp"/></svg>
+      <svg class="sp s4" viewBox="0 0 24 24"><use href="#sp"/></svg>
+      <svg class="sp s5 g" viewBox="0 0 24 24"><use href="#sp"/></svg>
+      <svg class="sp s6" viewBox="0 0 24 24"><use href="#sp"/></svg>
+      <svg class="sp s7" viewBox="0 0 24 24"><use href="#sp"/></svg>
+      <svg class="sp s8 g" viewBox="0 0 24 24"><use href="#sp"/></svg>
+      <svg class="sp s9" viewBox="0 0 24 24"><use href="#sp"/></svg>
+    </div>
+  </div>
+
   <div id="app">
 
     <!-- 1. Landing (Step 1) -->
     <section id="screen-landing" class="screen landing is-active" aria-label="Look Up">
-      <svg class="drift d1" viewBox="0 0 120 50" aria-hidden="true" focusable="false"><path d="M18 44h84a15 15 0 0 0 2-29.8A22 22 0 0 0 62 8a19 19 0 0 0-30 11A13 13 0 0 0 18 44z" fill="#fff" fill-opacity=".75"/></svg>
-      <svg class="drift d2" viewBox="0 0 120 50" aria-hidden="true" focusable="false"><path d="M18 44h84a15 15 0 0 0 2-29.8A22 22 0 0 0 62 8a19 19 0 0 0-30 11A13 13 0 0 0 18 44z" fill="#fff" fill-opacity=".6"/></svg>
       <header class="top top-landing">
         <a class="wordmark" href="./" aria-label="Look Up, home">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 18h10a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 7.1 9.6 4.2 4.2 0 0 0 7 18z"/></svg>
+          <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><circle cx="21" cy="11" r="6.5" fill="#ffc766"/><path d="M9 26h13a4.5 4.5 0 0 0 .8-8.9A6.5 6.5 0 0 0 10.4 18 4.2 4.2 0 0 0 9 26z" fill="#fff" stroke="#1d2b53" stroke-width="1.8" stroke-linejoin="round"/></svg>
           <span>look up</span>
         </a>
       </header>
       <main class="landing-main">
-        <h1 class="headline" tabindex="-1">Saw a shape in the clouds? <span class="hl">Send it to someone.</span></h1>
+        <p class="aside">psst, look up</p>
+        <h1 class="headline" tabindex="-1">Saw a <span class="shape">shape<svg class="loop" viewBox="0 0 120 60" preserveAspectRatio="none" aria-hidden="true" focusable="false"><path pathLength="100" d="M12 34C8 14 40 5 70 6c34 2 46 18 30 36C86 56 40 58 20 48 8 41 10 26 30 17c16-7 42-9 62-3" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span> in the clouds? <span class="hl">Send it to someone.</span></h1>
+        <p class="sub">Photograph the sky. Trace what you see. Send it to someone far away.</p>
 
         <div class="hero" id="hero">
+          <span class="puff pad pad-back" aria-hidden="true"></span>
+          <span class="puff pad pad-left" aria-hidden="true"></span>
+          <span class="puff pad pad-right" aria-hidden="true"></span>
           <div class="hero-card" id="heroCard" role="img" aria-label="A postcard of a sky with a white line drawing a dolphin in the clouds, and a postmark stamping down">
             <!-- shown until the real animated card is ready, or if it can't start -->
             <svg class="hero-fallback" viewBox="0 0 300 300" aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMid slice">
@@ -85,6 +123,7 @@
             </svg>
             <canvas id="heroCanvas" class="hero-canvas" aria-hidden="true"></canvas>
           </div>
+          <span class="puff pad pad-front" aria-hidden="true"></span>
         </div>
 
         <div class="cta">
@@ -108,7 +147,7 @@
     <!-- Opening the sky (Step 2, a gentle busy state) -->
     <section id="screen-working" class="screen working" aria-label="Opening your sky">
       <div class="work-card"><div class="work-photo"><img id="workImg" alt="" hidden></div></div>
-      <svg class="work-cloud" viewBox="0 0 120 50" aria-hidden="true" focusable="false"><path d="M18 44h84a15 15 0 0 0 2-29.8A22 22 0 0 0 62 8a19 19 0 0 0-30 11A13 13 0 0 0 18 44z" fill="#fff" stroke="#1f3a5f" stroke-opacity=".35" stroke-width="2"/></svg>
+      <svg class="work-cloud" viewBox="0 0 120 50" aria-hidden="true" focusable="false"><path d="M18 44h84a15 15 0 0 0 2-29.8A22 22 0 0 0 62 8a19 19 0 0 0-30 11A13 13 0 0 0 18 44z" fill="#fff" stroke="#1d2b53" stroke-opacity=".35" stroke-width="2"/></svg>
       <p class="work-line" id="workLine" role="status" aria-live="polite">Opening your sky&hellip;</p>
     </section>
 
@@ -189,7 +228,7 @@
         </div>
         <button id="glowToggle" class="toggle" type="button" role="switch" aria-checked="false" aria-disabled="true">
           <span class="toggle-text"><strong>Make it glow</strong><small id="glowHint">Close your shape to make it glow</small></span>
-          <span class="sw" aria-hidden="true"><i></i></span>
+          <span class="sw" aria-hidden="true"><i></i><b class="tw t1"></b><b class="tw t2"></b><b class="tw t3"></b><b class="tw t4"></b></span>
         </button>
         <p class="edit-links">
           <button id="btnEditWords" class="link" type="button">Edit words</button>
@@ -226,9 +265,21 @@
         <div class="done-card">
           <img id="doneImg" alt="Your card" hidden>
           <div class="done-badge" aria-hidden="true" data-icon="check"></div>
+          <div class="burst" aria-hidden="true">
+            <i style="--dx:-96px;--dy:-64px"></i>
+            <i style="--dx:-40px;--dy:-100px"></i>
+            <i style="--dx:34px;--dy:-104px"></i>
+            <i style="--dx:92px;--dy:-60px"></i>
+            <i style="--dx:108px;--dy:6px"></i>
+            <i style="--dx:84px;--dy:78px"></i>
+            <i style="--dx:-86px;--dy:76px"></i>
+            <i style="--dx:-110px;--dy:4px"></i>
+            <i style="--dx:-4px;--dy:-124px"></i>
+            <i style="--dx:20px;--dy:104px"></i>
+          </div>
         </div>
         <h1 class="done-title" id="doneTitle" tabindex="-1">Saved.</h1>
-        <p class="done-sub">Send it to someone who&rsquo;s far away.</p>
+        <p class="done-sub">Now send it to someone far away.</p>
         <p class="done-note" id="doneNote" role="status"></p>
         <aside class="inapp" data-inapp hidden aria-label="A tip about this browser">
           <span class="inapp-ico" data-icon="open" aria-hidden="true"></span>
@@ -252,8 +303,9 @@
       <main class="err-main">
         <div class="err-card">
           <svg class="err-art" viewBox="0 -8 120 78" aria-hidden="true" focusable="false">
-            <path d="M26 58h70a18 18 0 0 0 3-35.7A26 26 0 0 0 50 14a22 22 0 0 0-34 17A14 14 0 0 0 26 58z" fill="#fffdf8" stroke="#1f3a5f" stroke-width="3" stroke-linejoin="round"/>
-            <path d="M46 40q6-5 12 0M72 40q6-5 12 0M52 50q8 6 16 0" fill="none" stroke="#6c6a64" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="94" cy="14" r="13" fill="#ffc766"/>
+            <path d="M26 58h70a18 18 0 0 0 3-35.7A26 26 0 0 0 50 14a22 22 0 0 0-34 17A14 14 0 0 0 26 58z" fill="#fff" stroke="#1d2b53" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M46 40q6-5 12 0M72 40q6-5 12 0M52 50q8 6 16 0" fill="none" stroke="#4a5680" stroke-width="3" stroke-linecap="round"/>
           </svg>
           <h1 class="err-title" id="errTitle" tabindex="-1">Hmm, that didn&rsquo;t work.</h1>
           <p class="err-detail" id="errDetail" role="alert"></p>
@@ -267,8 +319,9 @@
       <main class="err-main">
         <div class="err-card">
           <svg class="err-art" viewBox="0 -8 120 78" aria-hidden="true" focusable="false">
-            <path d="M26 58h70a18 18 0 0 0 3-35.7A26 26 0 0 0 50 14a22 22 0 0 0-34 17A14 14 0 0 0 26 58z" fill="#fffdf8" stroke="#1f3a5f" stroke-width="3" stroke-linejoin="round"/>
-            <path d="M46 40q6-5 12 0M72 40q6-5 12 0M52 50q8 6 16 0" fill="none" stroke="#6c6a64" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="94" cy="14" r="13" fill="#ffc766"/>
+            <path d="M26 58h70a18 18 0 0 0 3-35.7A26 26 0 0 0 50 14a22 22 0 0 0-34 17A14 14 0 0 0 26 58z" fill="#fff" stroke="#1d2b53" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M46 40q6-5 12 0M72 40q6-5 12 0M52 50q8 6 16 0" fill="none" stroke="#4a5680" stroke-width="3" stroke-linecap="round"/>
           </svg>
           <h1 class="err-title" tabindex="-1">The sky is still waking up.</h1>
           <p class="err-detail">Something didn&rsquo;t load. Check your connection and give it another go.</p>

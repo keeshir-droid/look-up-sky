@@ -1,6 +1,6 @@
 // The card (PLAN.md 6.4, 7.3) and the editor view.
 //
-//   LU.card.create(sky, strokes, settings) -> Promise<Card>     resolves once the Caveat font is ready (never hangs)
+//   LU.card.create(sky, strokes, settings) -> Promise<Card>     resolves once Gochi Hand and Fraunces are ready (never hangs, 2.5 s cap)
 //     card.settings                    current settings, LU.DEFAULTS filled in (settings.when 0 = now)
 //     card.update(partial)             -> Promise<void>. Accepts finish, pen, glow, said, city, to, when. Caches that depend on
 //                                      them rebuild by themselves; a running preview redraws at once, even in its pause.
@@ -180,7 +180,9 @@
     const env = {
       key: key, card: cd, look: look, geo: geo, format: format, scale: scale, crop: crop, lay: lay, arr: plan.arr,
       sky: cd.sky, strokes: cd.strokes, settings: Object.assign({}, S), info: LU.words.when(S.when), ms: S.when,
-      measure: measure
+      measure: measure,
+      // the sky behind the piece (clouds, sparkles) is seeded from the day and the photo's size, so the same card always looks the same
+      seed: (Math.floor((S.when || 0) / 86400000) * 2654435761 + (cd.sky.width || 0) * 31 + (cd.sky.height || 0) * 17) >>> 0
     };
     return env;
   }
@@ -195,6 +197,7 @@
     this._sv = 1;      // strokes version
     this._rev = 1;     // bumped by every change (a preview watches it)
     this._envs = {};
+    this._bgs = {};    // the backdrop layer per format (it survives text edits)
   }
 
   Card.prototype.update = function (partial) {
@@ -238,9 +241,20 @@
     ctx.globalCompositeOperation = "source-over"; ctx.globalAlpha = 1;
     ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
 
-    // the desk
-    const bg = lazy(env, "bgC", function () { return layer(W, H, scale, function (x) { look.background(x, format); }); });
-    if (bg) ctx.drawImage(bg, 0, 0, W, H); else look.background(ctx, format);
+    // the backdrop (the golden-hour sky, or Film's dark): a static layer, cached per look / format / size / photo tone. Looks with
+    // a `drift` pad draw it a little bigger, and it slides by whole pixels (1.2% of the width over the whole 5 s: the clouds move
+    // very slowly against the card)
+    const pad = look.drift || 0, tone = (this.sky && this.sky.tone) || "";
+    const bgKey = [look.id, format, scale.toFixed(3), tone, env.seed].join("|");
+    const hit = this._bgs[format];
+    let bg = hit && hit.key === bgKey ? hit.c : null;
+    if (!bg) {
+      try { bg = layer(W + 2 * pad, H + 2 * pad, scale, function (x) { x.translate(pad, pad); look.background(x, format, env); }); } catch (e) { bg = null; if (typeof console !== "undefined") console.error(e); }
+      this._bgs[format] = bg ? { key: bgKey, c: bg } : null;
+    }
+    const drift = pad ? Math.round((t / LU.END - 0.5) * 0.012 * W * scale) / scale : 0;
+    if (bg) ctx.drawImage(bg, -pad + drift, -pad, W + 2 * pad, H + 2 * pad);
+    else { ctx.save(); look.background(ctx, format, env); ctx.restore(); }
 
     // the piece settles in
     const settle = ss(0, T_SETTLE, t), sc = 1 + 0.05 * (1 - settle) * (1 - settle);
@@ -336,15 +350,8 @@
   // resolves once the handwriting font is ready (but never waits more than a moment)
   card.create = async function (sky, strokes, settings) {
     try {
-      if (typeof document !== "undefined" && document.fonts && document.fonts.load) {
-        let timer = 0;
-        await Promise.race([
-          document.fonts.load('600 40px "Caveat"', "Aa").catch(function () { }),
-          new Promise(function (res) { timer = setTimeout(res, 2500); })
-        ]);
-        clearTimeout(timer);
-      }
-    } catch (e) { /* the fallback handwriting font is fine */ }
+      await LU.finishes.loadFonts(2500); // Gochi Hand + Fraunces italic, capped at 2.5 s
+    } catch (e) { /* the fallback fonts are fine */ }
     return new Card(sky, strokes, settings);
   };
 

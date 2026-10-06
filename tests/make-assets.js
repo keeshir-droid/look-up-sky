@@ -1,4 +1,4 @@
-// Makes assets/og.jpg (1200x630) and docs/preview-postcard.png (580x580) from tests/og.html with the real engine.
+// Makes assets/og-v2.jpg (1200x630) and docs/preview-postcard.png (580x580) from tests/og.html with the real engine.
 //   node tests/make-assets.js [baseUrl]      (a local server must be running; this never starts one)
 const fs = require("fs");
 const path = require("path");
@@ -24,7 +24,8 @@ async function grab(b, mode, w, h, params, file) {
   let b = null;
   try {
     b = await launch({ width: 1200, height: 630, dpr: 1, mobile: false });
-    await grab(b, "og", 1200, 630, { format: "jpeg", quality: 85 }, path.join(ROOT, "assets", "og.jpg"));
+    // og-v2.jpg, not og.jpg: vercel.json caches /assets/* as immutable, so a changed picture needs a new name
+    await grab(b, "og", 1200, 630, { format: "jpeg", quality: 85 }, path.join(ROOT, "assets", "og-v2.jpg"));
     await grab(b, "postcard", 580, 580, { format: "png" }, path.join(ROOT, "docs", "preview-postcard.png"));
     await grab(b, "film", 900, 900, { format: "png" }, path.join(ROOT, "tests", "out", "film-square.png"));
   } finally {

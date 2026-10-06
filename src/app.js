@@ -273,6 +273,16 @@ function fillFooter() {
 
   /* ---------- screens ---------- */
 
+  // the browser's address bar takes the colour of the sky on each screen (where the browser allows it)
+  var THEME = {
+    landing: "#9cc7f2", working: "#9cc7f2", trace: "#26316b", words: "#ffe6d4", look: "#dacaf8",
+    making: "#38458d", done: "#ffe2a0", error: "#dcecfd", broken: "#dcecfd"
+  };
+  function setThemeColor(name) {
+    var m = D.querySelector('meta[name="theme-color"]');
+    if (m) m.setAttribute("content", THEME[name] || THEME.landing);
+  }
+
   function showScreen(name, dbgName) {
     closeInAppSheet();
     if (S.screen === "landing" && name !== "landing") stopHero();
@@ -280,6 +290,7 @@ function fillFooter() {
     S.screen = name;
     S.screenName = dbgName || name;
     D.body.setAttribute("data-screen", S.screenName);
+    setThemeColor(name);
     W.scrollTo(0, 0);
     var focusEl = null;
     if (name === "landing") focusEl = qsa(".headline")[0];
@@ -966,6 +977,32 @@ function fillFooter() {
       return;
     }
     change({ glow: !S.settings.glow });
+    if (S.settings.glow) sparkleToggle();
+  }
+
+  // a few little stars pop off the switch when the glow turns on
+  function sparkleToggle() {
+    if (reduceMotion()) return;
+    var tg = $("glowToggle");
+    tg.classList.remove("sparkle");
+    void tg.offsetWidth;
+    tg.classList.add("sparkle");
+    setTimeout(function () { tg.classList.remove("sparkle"); }, 1000);
+  }
+
+  // a soft ripple where a finger lands on a button or a look (a small span that removes itself)
+  function ripple(ev) {
+    if (reduceMotion()) return;
+    var t = ev.target && ev.target.closest ? ev.target.closest(".btn, .chip") : null;
+    if (!t || t.disabled) return;
+    var r = t.getBoundingClientRect();
+    var s = D.createElement("span");
+    s.className = "rip";
+    s.setAttribute("aria-hidden", "true");
+    s.style.left = (ev.clientX - r.left) + "px";
+    s.style.top = (ev.clientY - r.top) + "px";
+    t.appendChild(s);
+    setTimeout(function () { if (s.parentNode) s.parentNode.removeChild(s); }, 700);
   }
 
   /* ---------- the image makes itself as soon as the look settles (PLAN.md 6.6) ---------- */
@@ -1278,6 +1315,8 @@ function fillFooter() {
   }
 
   function wire() {
+    D.addEventListener("pointerdown", ripple, { passive: true });
+
     // landing
     $("btnPhoto").addEventListener("click", function () { if (ensureEngine()) $("cameraInput").click(); });
     $("btnChoose").addEventListener("click", function () { if (ensureEngine()) $("galleryInput").click(); });

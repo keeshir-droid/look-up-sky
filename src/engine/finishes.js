@@ -15,7 +15,10 @@
 // context. A look is an object:
 //   look.geo(format)               -> { W, H, cx, cy, tilt, win:{x,y,w,h}, lineW, focusY }   the piece's centre and tilt, the
 //                                     window the sky shows in, the pen's width, where in the window the drawing is centred
-//   look.background(ctx, format)   static, card space (the desk)
+//   look.background(ctx, format, env)  static, card space: the golden-hour sky behind Postcard, Polaroid and Letter (env.seed,
+//                                     env.sky.tone choose its colours and clouds); look.drift (px of padding) = the card
+//                                     moves it a hair, whole pixels, over the video
+//   LU.finishes.loadFonts(capMs?)  -> Promise    registers Gochi Hand 400 + Fraunces italic 600 (FontFace API), never rejects
 //   look.base(ctx, format, env)    static, piece space (paper, shadow, frame; no sky)
 //   look.grade(ctx, w, h, format)  optional, baked into the sky picture (film fade, grain)
 //   look.over(ctx, format, env)    static, piece space, drawn above the sky and the pen (stamp, tape, shading)
@@ -32,13 +35,43 @@
   const LU = (globalThis.LU = globalThis.LU || {});
   const U = function () { return LU.util; };
 
-  const HAND = '"Caveat","Segoe Print","Bradley Hand","Comic Sans MS",cursive';
-  const SERIF = '"Iowan Old Style","Palatino Linotype",Palatino,"Book Antiqua",Georgia,serif';
+  // Gochi Hand (handwriting, 400) and Fraunces (italic 600, the small serif lines). Both are loaded by LU.finishes.loadFonts
+  // (called by card.create); the stacks below are what shows if a font is missing.
+  const HAND = '"Gochi Hand","Segoe Print","Bradley Hand","Comic Sans MS",cursive';
+  const SERIF = '"Fraunces",Georgia,"Times New Roman",serif';
   const SANS = '"Helvetica Neue",Helvetica,Arial,sans-serif';
   const SITE = "look-up-sky.vercel.app";
-  const INK = "#2b3d63";       // handwriting ink
+  const INK = "#2a3a78";       // handwriting ink (a touch bluer than the old navy)
+  const MARK_INK = "#1d2b53";  // the made-with mark on the sky backdrop
   const POSTMARK = "#2c3e5c";  // --postmark
   const DEG = Math.PI / 180;
+  const HAND_CAP = 0.62;       // Gochi Hand's cap height as a share of the font size (the serif lines use 0.7)
+
+  // ---------- the fonts ----------
+  // Registered with the FontFace API under their real family names, so it works the same in headless Edge, Chrome and iOS Safari
+  // and does not depend on the page's CSS. Resolves when both are ready or after capMs (never rejects).
+  const FONT_FILES = [
+    { family: "Gochi Hand", file: "gochi-hand-400.woff2", weight: "400", style: "normal", spec: '400 40px "Gochi Hand"' },
+    { family: "Fraunces", file: "fraunces-600-italic.woff2", weight: "600", style: "italic", spec: 'italic 600 40px "Fraunces"' }
+  ];
+  let fontsPromise = null;
+  function fontBase() { // ../../fonts/ relative to this script (src/engine/finishes.js), else fonts/ next to the page
+    try { if (typeof document !== "undefined" && document.currentScript && document.currentScript.src) return new URL("../../fonts/", document.currentScript.src).href; } catch (e) { /* use the default */ }
+    return "fonts/";
+  }
+  const FONT_BASE = fontBase();
+  function loadFonts(capMs) {
+    if (typeof document === "undefined" || !document.fonts || typeof FontFace !== "function") return Promise.resolve();
+    if (!fontsPromise) {
+      fontsPromise = Promise.all(FONT_FILES.map(function (f) {
+        try {
+          const face = new FontFace(f.family, "url(" + FONT_BASE + f.file + ") format('woff2')", { weight: f.weight, style: f.style, display: "block" });
+          return face.load().then(function () { document.fonts.add(face); }).catch(function () { /* the fallback stack is fine */ });
+        } catch (e) { return Promise.resolve(); }
+      })).then(function () { });
+    }
+    return Promise.race([fontsPromise, new Promise(function (res) { setTimeout(res, capMs > 0 ? capMs : 2500); })]);
+  }
 
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
 
@@ -190,7 +223,7 @@
       { minRatio: o.minRatio, maxLines: o.maxLines, maxH: o.maxH, lineHeight: o.lineRatio || 1.1 });
     if (!fr.lines.length) return null;
     const size = fr.size, step = o.lineH > 0 ? o.lineH : fr.lineHeight, n = fr.lines.length;
-    const capH = size * 0.7;
+    const capH = size * (o.cap || 0.7);
     let y0;
     if (o.y !== undefined) y0 = o.y;
     else if (o.top !== undefined) y0 = o.top + size * 0.8;
@@ -252,7 +285,7 @@
     ctx.save();
     ctx.globalAlpha *= alpha === undefined ? 0.66 : alpha;
     ctx.fillStyle = color;
-    ctx.font = "italic 500 " + size + "px " + SERIF;
+    ctx.font = "italic 600 " + size + "px " + SERIF;
     ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
     if (shadow) { ctx.shadowColor = shadow; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1; }
     ctx.fillText("made with " + SITE, x, y);
@@ -295,7 +328,7 @@
   function washi(ctx, cx, cy, rot, tw, th, rgb) {
     ctx.save();
     ctx.translate(cx, cy); ctx.rotate(rot);
-    ctx.shadowColor = "rgba(40,25,10,.25)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
+    ctx.shadowColor = "rgba(50,40,110,.26)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
     ctx.fillStyle = "rgba(" + rgb + ",.84)";
     ctx.beginPath();
     ctx.moveTo(-tw / 2, -th / 2);
@@ -313,22 +346,119 @@
 
   function pieceShadowCard(ctx, x, y, w, h, r, fill, blur, dy, alpha) {
     ctx.save();
-    ctx.shadowColor = "rgba(60,40,20," + alpha + ")"; ctx.shadowBlur = blur; ctx.shadowOffsetY = dy;
+    ctx.shadowColor = "rgba(58,46,128," + alpha + ")"; ctx.shadowBlur = blur; ctx.shadowOffsetY = dy; // a cool purple shadow on the sky
     ctx.fillStyle = fill; rr(ctx, x, y, w, h, r); ctx.fill();
     ctx.restore();
   }
 
-  function deskBackground(ctx, format, base, hi, lo) {
-    const b = box(format);
-    ctx.fillStyle = base; ctx.fillRect(0, 0, b.W, b.H);
-    const g = ctx.createRadialGradient(b.W * 0.45, b.H * 0.4, 80, b.W / 2, b.H / 2, b.H * 0.8);
-    g.addColorStop(0, hi); g.addColorStop(1, lo);
-    ctx.fillStyle = g; ctx.fillRect(0, 0, b.W, b.H);
-    // window light from the top left
-    const l = ctx.createLinearGradient(0, 0, b.W, b.H * 0.7);
-    l.addColorStop(0, "rgba(255,255,255,.28)"); l.addColorStop(0.5, "rgba(255,255,255,0)");
-    ctx.fillStyle = l; ctx.fillRect(0, 0, b.W, b.H);
-    grain(ctx, 0, 0, b.W, b.H, "multiply", 0.07);
+  // ---------- the golden-hour sky behind Postcard, Polaroid and Letter ----------
+  // A soft gradient (it follows the photo's tone), a faint sun glow, a few painted cloud puffs, tiny sparkles and fine grain,
+  // all drawn in code. Deterministic: the same card always gets the same clouds and sparkles (seeded from the day and the photo's
+  // size). `hole` is the piece (centre and half size, tilt included): the clouds sit around it and peek out from behind it.
+  const SKIES = {
+    day:    { stops: [[0, "#9cc7f2"], [0.55, "#ffc4d4"], [1, "#ffd9c0"]], sun: "255,206,140", sunA: 0.34, cloudA: 0.40, sparkles: 1, dark: false },
+    sunset: { stops: [[0, "#a3b6f0"], [0.26, "#cdb8f5"], [0.56, "#ffbfc8"], [0.82, "#ffcf9e"], [1, "#ffe0a0"]], sun: "255,190,110", sunA: 0.34, cloudA: 0.40, sparkles: 1, dark: false },
+    grey:   { stops: [[0, "#b4c9e6"], [0.45, "#d6cdf1"], [0.8, "#f4dae2"], [1, "#f7e4d8"]], sun: "255,214,170", sunA: 0.2, cloudA: 0.30, sparkles: 1, dark: false },
+    dark:   { stops: [[0, "#2f3d7e"], [0.3, "#3a4a8c"], [0.68, "#7f70bb"], [0.9, "#b891c8"], [0.965, "#eba4b2"], [1, "#ffbb88"]], sun: "255,150,110", sunA: 0.24, cloudA: 0.24, sparkles: 1.6, dark: true }
+  };
+  function skyToneOf(env) { const t = env && env.sky && env.sky.tone; return SKIES[t] ? t : "day"; }
+  function onDark(env) { return skyToneOf(env) === "dark"; }
+
+  function sparkle(ctx, x, y, s, a, rot) { // a 4-point star, s = its full size
+    const r = s / 2;
+    ctx.save();
+    ctx.translate(x, y); ctx.rotate(rot || 0);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, s * 1.1);
+    g.addColorStop(0, "rgba(255,255,255," + (a * 0.38).toFixed(3) + ")"); g.addColorStop(1, "rgba(255,255,255,0)");
+    ctx.fillStyle = g; ctx.fillRect(-s * 1.2, -s * 1.2, s * 2.4, s * 2.4);
+    ctx.fillStyle = "rgba(255,255,255," + a.toFixed(3) + ")";
+    ctx.beginPath();
+    ctx.moveTo(0, -r); ctx.quadraticCurveTo(r * 0.12, -r * 0.12, r, 0); ctx.quadraticCurveTo(r * 0.12, r * 0.12, 0, r);
+    ctx.quadraticCurveTo(-r * 0.12, r * 0.12, -r, 0); ctx.quadraticCurveTo(-r * 0.12, -r * 0.12, 0, -r);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function puff(ctx, x, y, rx, ry, rgb, a) { // one soft blob: a radial gradient, a little flatter than round
+    ctx.save();
+    ctx.translate(x, y); ctx.scale(1, ry / rx);
+    const g = ctx.createRadialGradient(0, 0, 0, 0, 0, rx);
+    g.addColorStop(0, "rgba(" + rgb + "," + a.toFixed(3) + ")"); g.addColorStop(0.6, "rgba(" + rgb + "," + (a * 0.9).toFixed(3) + ")");
+    g.addColorStop(0.86, "rgba(" + rgb + "," + (a * 0.38).toFixed(3) + ")"); g.addColorStop(1, "rgba(" + rgb + ",0)");
+    ctx.fillStyle = g; ctx.fillRect(-rx, -rx, 2 * rx, 2 * rx);
+    ctx.restore();
+  }
+
+  // a painted cumulus: a row of overlapping puffs, bigger in the middle, with a warm underside
+  function cloud(ctx, cx, cy, w, h, rnd, a, dark) {
+    const n = 6 + Math.floor(rnd() * 3), under = dark ? "196,150,220" : "255,176,164";
+    const spots = [];
+    for (let i = 0; i < n; i++) {
+      const t = i / (n - 1), bump = Math.sin(Math.PI * (0.06 + 0.88 * t));
+      const r = h * (0.4 + 0.6 * bump) * (0.84 + 0.32 * rnd());
+      spots.push({ x: cx + (t - 0.5) * w + (rnd() - 0.5) * w * 0.05, y: cy - r * 0.5, r: r }); // the bottoms line up: a flat-bottomed cumulus
+    }
+    // a warm, flat underside, then the white domes, then a brighter top
+    puff(ctx, cx, cy + h * 0.02, w * 0.55, h * 0.3, under, a * 0.7);
+    spots.forEach(function (p) { puff(ctx, p.x, p.y, p.r, p.r * 0.82, "255,255,255", a * 0.8); });
+    spots.forEach(function (p) { puff(ctx, p.x - p.r * 0.08, p.y - p.r * 0.2, p.r * 0.6, p.r * 0.45, "255,255,255", a * 0.6); });
+  }
+
+  // hole = { x, y, w, h } of the piece before the tilt; env.seed makes the sky repeatable
+  function skyBackdrop(ctx, format, env, hole, pad) {
+    const b = box(format), W = b.W, H = b.H, story = format === "story", P = pad || 0;
+    const tone = SKIES[skyToneOf(env)];
+    const rnd = U().mulberry32((env && env.seed) || 7);
+    // the gradient (it carries on into the padding the slow drift moves under the card)
+    const g = ctx.createLinearGradient(0, -P, 0, H + P);
+    tone.stops.forEach(function (s) { g.addColorStop(s[0], s[1]); });
+    ctx.fillStyle = g; ctx.fillRect(-P, -P, W + 2 * P, H + 2 * P);
+    // the sun's glow: top right on the square, a low horizon glow on the story
+    ctx.save();
+    ctx.globalCompositeOperation = "screen"; // gold over blue would turn green; screen only lightens and warms
+    if (story) { ctx.translate(W * 0.5, H + 20); ctx.scale(1, 0.62); }
+    else ctx.translate(W * 0.86, H * 0.07);
+    const sr = story ? W * 1.15 : W * 0.7, sg = ctx.createRadialGradient(0, 0, 0, 0, 0, sr);
+    const sA = tone.sunA * (story ? 1.5 : 1);
+    sg.addColorStop(0, "rgba(" + tone.sun + "," + sA.toFixed(3) + ")"); sg.addColorStop(0.35, "rgba(" + tone.sun + "," + (sA * 0.55).toFixed(3) + ")");
+    sg.addColorStop(1, "rgba(" + tone.sun + ",0)");
+    ctx.fillStyle = sg; ctx.fillRect(-sr - 2, -sr - 2, 2 * sr + 4, 2 * sr + 4);
+    if (!story) { // a small bright core
+      const cg = ctx.createRadialGradient(0, 0, 0, 0, 0, W * 0.16);
+      cg.addColorStop(0, "rgba(255,248,214," + (tone.dark ? 0.2 : 0.55).toFixed(3) + ")"); cg.addColorStop(1, "rgba(255,248,214,0)");
+      ctx.fillStyle = cg; ctx.fillRect(-W * 0.16, -W * 0.16, W * 0.32, W * 0.32);
+    }
+    ctx.restore();
+    // the clouds sit around the piece, centred just outside its edge so half of each hides behind it
+    // Slots: two clouds in the band above the piece, two below it, and (story) two peeking out at the sides. Each sits low in its
+    // band's free part, with its base a little behind the piece's edge.
+    const top = hole.y, bot = hole.y + hole.h, slots = [];
+    function add(x, base, size, a) { slots.push({ x: x * W, base: base, w: size * W, a: a }); }
+    const j = function (a, b) { return a + (b - a) * rnd(); };
+    const sw = story ? 0.46 : 0.36;
+    add(j(0.12, 0.34), Math.max(0.1 * H, top * 0.62 + 20), sw * j(0.9, 1.15), 1);
+    add(j(0.62, 0.86), Math.max(0.08 * H, top * 0.36 + 24), sw * j(0.6, 0.85), 0.8);
+    add(j(0.1, 0.3), Math.min(0.97 * H, bot + (H - bot) * 0.62 + 30), sw * j(0.7, 0.95), 0.85);
+    add(j(0.55, 0.82), Math.min(0.99 * H, bot + (H - bot) * 0.88 + 30), sw * j(0.95, 1.2), 1);
+    if (story) {
+      add(j(0.0, 0.08), j(top + 0.2 * hole.h, top + 0.45 * hole.h), 0.32 * j(0.8, 1.1), 0.85);
+      add(j(0.92, 1.0), j(top + 0.55 * hole.h, top + 0.85 * hole.h), 0.3 * j(0.8, 1.1), 0.85);
+      add(j(0.4, 0.6), Math.min(0.99 * H, bot + (H - bot) * 0.38 + 30), 0.28, 0.7);
+    }
+    slots.forEach(function (s) { cloud(ctx, s.x, s.base, s.w, s.w * 0.3, rnd, tone.cloudA * s.a, tone.dark); });
+    // sparkles, away from the piece (it would cover them anyway)
+    const ns = Math.round((story ? 20 : 14) * tone.sparkles);
+    for (let i = 0, tries = 0; i < ns && tries < 400; tries++) {
+      const x = rnd() * W, y = rnd() * H, s = 6 + rnd() * 8, a = 0.4 + rnd() * 0.3, rot = (rnd() - 0.5) * 0.5;
+      if (x > hole.x - 8 && x < hole.x + hole.w + 8 && y > hole.y - 8 && y < hole.y + hole.h + 8) continue;
+      sparkle(ctx, x, y, s, a, rot); i++;
+    }
+    grain(ctx, -P, -P, W + 2 * P, H + 2 * P, "overlay", 0.05); // very fine grain
+  }
+  // the piece's centre box with a little room for its tilt and shadow
+  function holeOf(r, tilt) {
+    const k = Math.abs(Math.sin(tilt)) * 0.5, cx = r.x + r.w / 2, cy = r.y + r.h / 2, w = r.w + r.h * 2 * k, h = r.h + r.w * 2 * k;
+    return { x: cx - w / 2, y: cy - h / 2, w: w, h: h };
   }
 
   // =====================================================================================
@@ -487,7 +617,7 @@
       // onto the piece, a little tilted, with its own soft shadow
       ctx.save();
       ctx.translate(s.cx, s.cy); ctx.rotate(s.rot);
-      ctx.shadowColor = "rgba(30,20,10,.38)"; ctx.shadowBlur = 8; ctx.shadowOffsetX = 2 * k; ctx.shadowOffsetY = 3 * k;
+      ctx.shadowColor = "rgba(30,26,70,.36)"; ctx.shadowBlur = 8; ctx.shadowOffsetX = 2 * k; ctx.shadowOffsetY = 3 * k;
       ctx.drawImage(tmp, -s.w / 2, -s.h / 2, s.w, s.h);
       ctx.restore();
     }
@@ -659,28 +789,32 @@
       id: "postcard",
       geo: geo,
       arrange: arrange,
-      background: function (ctx, format) { deskBackground(ctx, format, "#eee5d4", "rgba(255,251,242,.75)", "rgba(160,132,92,.30)"); },
+      drift: 14,
+      background: function (ctx, format, env) {
+        const g = geo(format);
+        skyBackdrop(ctx, format, env, holeOf(g.card, g.tilt), 14);
+      },
       base: function (ctx, format) {
         const g = geo(format), c = g.card, story = format === "story";
-        // a second card underneath, peeking out
+        // a second card underneath, peeking out (a pale blush)
         ctx.save(); ctx.translate(g.cx + (story ? 20 : 13), g.cy + (story ? 15 : 12)); ctx.rotate((story ? 3.2 : 2.6) * DEG);
-        pieceShadowCard(ctx, -c.w / 2, -c.h / 2, c.w, c.h, 7, "#f2e8d3", 26, 8, 0.28);
+        pieceShadowCard(ctx, -c.w / 2, -c.h / 2, c.w, c.h, 7, "#fbe4ec", 26, 8, 0.26);
         ctx.restore();
-        // the card itself, on warm white paper
-        pieceShadowCard(ctx, c.x, c.y, c.w, c.h, 7, "#fffdf8", 42, 17, 0.36);
+        // the card itself, on white paper
+        pieceShadowCard(ctx, c.x, c.y, c.w, c.h, 7, "#fffefb", 42, 17, 0.34);
         ctx.save();
         rr(ctx, c.x, c.y, c.w, c.h, 7); ctx.clip();
         const pg = ctx.createLinearGradient(c.x, c.y, c.x + c.w, c.y + c.h);
-        pg.addColorStop(0, "rgba(255,255,255,0)"); pg.addColorStop(1, "rgba(212,196,158,.20)");
+        pg.addColorStop(0, "rgba(255,255,255,0)"); pg.addColorStop(1, "rgba(214,204,240,.12)");
         ctx.fillStyle = pg; ctx.fillRect(c.x, c.y, c.w, c.h);
-        grain(ctx, c.x, c.y, c.w, c.h, "multiply", 0.06);
+        grain(ctx, c.x, c.y, c.w, c.h, "multiply", 0.03);
         ctx.restore();
-        ctx.strokeStyle = "rgba(120,100,70,.22)"; ctx.lineWidth = 1.2; rr(ctx, c.x + 0.6, c.y + 0.6, c.w - 1.2, c.h - 1.2, 7); ctx.stroke();
+        ctx.strokeStyle = "rgba(90,84,150,.2)"; ctx.lineWidth = 1.2; rr(ctx, c.x + 0.6, c.y + 0.6, c.w - 1.2, c.h - 1.2, 7); ctx.stroke();
       },
       over: function (ctx, format, env) {
         const g = geo(format), w = g.win;
         ctx.save();
-        ctx.strokeStyle = "rgba(50,40,25,.28)"; ctx.lineWidth = 1.4; ctx.strokeRect(w.x - 0.7, w.y - 0.7, w.w + 1.4, w.h + 1.4);
+        ctx.strokeStyle = "rgba(40,44,90,.28)"; ctx.lineWidth = 1.4; ctx.strokeRect(w.x - 0.7, w.y - 0.7, w.w + 1.4, w.h + 1.4);
         ctx.restore();
         drawStamp(ctx, env, arrOf(env));
       },
@@ -690,20 +824,20 @@
         const said = saidOr(env, "Look up."), to = toOf(env);
         const blocks = [];
         const baseRow = sy + g.strip - 30;
-        const dateB = block(env, { kind: "fade", text: env.info.line, family: SERIF, style: "italic", weight: 500, size: story ? 25 : 23,
-          maxW: win.w * 0.52, maxLines: 1, minRatio: 0.7, align: "right", x: x1, y: baseRow, color: "#6d6a63", moonColor: "#3d3a34", moon: true });
-        const toB = to ? block(env, { text: to, family: HAND, weight: 600, size: story ? 44 : 40, maxW: Math.max(120, (dateB ? dateB.x0 : x1) - x0 - 20),
-          maxLines: 1, minRatio: 0.6, x: x0, y: baseRow, color: "#4d6089" }) : null;
+        const dateB = block(env, { kind: "fade", text: env.info.line, family: SERIF, style: "italic", weight: 600, size: story ? 25 : 23,
+          maxW: win.w * 0.52, maxLines: 1, minRatio: 0.7, align: "right", x: x1, y: baseRow, color: "#5f5a78", moonColor: "#34315a", moon: true });
+        const toB = to ? block(env, { text: to, family: HAND, weight: 400, cap: HAND_CAP, size: story ? 42 : 38, maxW: Math.max(120, (dateB ? dateB.x0 : x1) - x0 - 20),
+          maxLines: 1, minRatio: 0.6, x: x0, y: baseRow, color: "#4a5a9e" }) : null;
         const rowReserve = to ? (story ? 52 : 48) : 34;
-        const saidB = said ? block(env, { text: said, family: HAND, weight: 600, size: story ? 68 : 62, maxW: x1 - x0, maxH: g.strip - 16 - rowReserve,
+        const saidB = said ? block(env, { text: said, family: HAND, weight: 400, cap: HAND_CAP, size: story ? 64 : 58, maxW: x1 - x0, maxH: g.strip - 16 - rowReserve,
           x: x0, top: to ? sy + 8 : undefined, vcenter: to ? undefined : sy + (g.strip - 12 - rowReserve) / 2 + 10, color: INK }) : null;
         [saidB, toB, dateB].forEach(function (b) { if (b) blocks.push(b); });
         return { blocks: blocks };
       },
       postmark: postmarkSpec,
-      mark: function (ctx, format) {
-        const story = format === "story";
-        mark(ctx, story ? 990 : 1020, story ? 1526 : 1044, story ? 26 : 22, "#4f4232", null, 0.66);
+      mark: function (ctx, format, env) {
+        const story = format === "story", dark = onDark(env);
+        mark(ctx, story ? 990 : 1020, story ? 1526 : 1044, story ? 26 : 22, dark ? "#ffffff" : MARK_INK, dark ? "rgba(20,24,60,.35)" : null, dark ? 0.78 : 0.68);
       }
     };
   })();
@@ -726,24 +860,21 @@
     return {
       id: "polaroid",
       geo: geo,
-      background: function (ctx, format) {
-        const b = box(format);
-        ctx.fillStyle = "#e7e1d5"; ctx.fillRect(0, 0, b.W, b.H);
-        const g = ctx.createRadialGradient(b.W / 2, b.H * 0.45, 80, b.W / 2, b.H / 2, b.H * 0.8);
-        g.addColorStop(0, "rgba(255,252,244,.7)"); g.addColorStop(1, "rgba(150,135,110,.28)");
-        ctx.fillStyle = g; ctx.fillRect(0, 0, b.W, b.H);
-        grain(ctx, 0, 0, b.W, b.H, "multiply", 0.06);
+      drift: 14,
+      background: function (ctx, format, env) {
+        const g = geo(format);
+        skyBackdrop(ctx, format, env, holeOf(g.frame, g.tilt), 14);
       },
       base: function (ctx, format) {
         const g = geo(format), f = g.frame;
         ctx.save();
-        ctx.shadowColor = "rgba(50,35,15,.34)"; ctx.shadowBlur = 42; ctx.shadowOffsetY = 18; ctx.shadowOffsetX = 4;
-        ctx.fillStyle = "#fdfcf8"; rr(ctx, f.x, f.y, f.w, f.h, 6); ctx.fill();
+        ctx.shadowColor = "rgba(58,46,128,.34)"; ctx.shadowBlur = 42; ctx.shadowOffsetY = 18; ctx.shadowOffsetX = 4;
+        ctx.fillStyle = "#fefdfb"; rr(ctx, f.x, f.y, f.w, f.h, 6); ctx.fill();
         ctx.restore();
         const pg = ctx.createLinearGradient(f.x, f.y, f.x + f.w, f.y + f.h);
-        pg.addColorStop(0, "rgba(255,255,255,0)"); pg.addColorStop(1, "rgba(200,185,150,.16)");
+        pg.addColorStop(0, "rgba(255,255,255,0)"); pg.addColorStop(1, "rgba(200,192,232,.14)");
         ctx.fillStyle = pg; rr(ctx, f.x, f.y, f.w, f.h, 6); ctx.fill();
-        ctx.save(); rr(ctx, f.x, f.y, f.w, f.h, 6); ctx.clip(); grain(ctx, f.x, f.y, f.w, f.h, "multiply", 0.05); ctx.restore();
+        ctx.save(); rr(ctx, f.x, f.y, f.w, f.h, 6); ctx.clip(); grain(ctx, f.x, f.y, f.w, f.h, "multiply", 0.03); ctx.restore();
       },
       over: function (ctx, format) {
         const g = geo(format), p = g.win; // the picture sits slightly sunk into the frame
@@ -751,7 +882,7 @@
         const sh = ctx.createLinearGradient(0, p.y, 0, p.y + 18);
         sh.addColorStop(0, "rgba(0,0,0,.16)"); sh.addColorStop(1, "rgba(0,0,0,0)");
         ctx.fillStyle = sh; ctx.fillRect(p.x, p.y, p.w, 18);
-        ctx.strokeStyle = "rgba(40,30,15,.22)"; ctx.lineWidth = 1.2; ctx.strokeRect(p.x - 0.6, p.y - 0.6, p.w + 1.2, p.h + 1.2);
+        ctx.strokeStyle = "rgba(30,34,80,.22)"; ctx.lineWidth = 1.2; ctx.strokeRect(p.x - 0.6, p.y - 0.6, p.w + 1.2, p.h + 1.2);
         ctx.restore();
       },
       text: function (env) {
@@ -760,21 +891,21 @@
         const said = saidOr(env, "Look up."), to = toOf(env);
         const blocks = [];
         const rightW = p.w * 0.4;
-        const cityB = block(env, { kind: "fade", text: cityOf(env), family: SERIF, style: "italic", weight: 500, size: story ? 25 : 23, maxW: rightW, maxLines: 1,
-          minRatio: 0.6, align: "right", x: x1, y: y0 + g.strip * 0.43, color: "#5f5d57" });
-        const dateB = block(env, { kind: "fade", text: env.info.line, family: SERIF, style: "italic", weight: 500, size: story ? 22 : 20, maxW: rightW, maxLines: 1,
-          minRatio: 0.6, align: "right", x: x1, y: y0 + g.strip * 0.43 + 30, color: "#77746c", moonColor: "#3d3a34", moon: true });
+        const cityB = block(env, { kind: "fade", text: cityOf(env), family: SERIF, style: "italic", weight: 600, size: story ? 25 : 23, maxW: rightW, maxLines: 1,
+          minRatio: 0.6, align: "right", x: x1, y: y0 + g.strip * 0.43, color: "#524e72" });
+        const dateB = block(env, { kind: "fade", text: env.info.line, family: SERIF, style: "italic", weight: 600, size: story ? 22 : 20, maxW: rightW, maxLines: 1,
+          minRatio: 0.6, align: "right", x: x1, y: y0 + g.strip * 0.43 + 30, color: "#6c6888", moonColor: "#34315a", moon: true });
         const rx0 = Math.min(cityB ? cityB.x0 : x1, dateB ? dateB.x0 : x1);
         const leftW = Math.max(160, rx0 - x0 - 24);
-        const toB = to ? block(env, { text: to, family: HAND, weight: 600, size: story ? 42 : 38, maxW: leftW, maxLines: 1, minRatio: 0.6, x: x0, y: y0 + g.strip - 30, color: "#4d6089" }) : null;
-        const saidB = said ? block(env, { text: said, family: HAND, weight: 600, size: story ? 66 : 60, maxW: leftW, maxH: g.strip - 22 - (to ? 46 : 0),
+        const toB = to ? block(env, { text: to, family: HAND, weight: 400, cap: HAND_CAP, size: story ? 40 : 36, maxW: leftW, maxLines: 1, minRatio: 0.6, x: x0, y: y0 + g.strip - 30, color: "#4a5a9e" }) : null;
+        const saidB = said ? block(env, { text: said, family: HAND, weight: 400, cap: HAND_CAP, size: story ? 62 : 56, maxW: leftW, maxH: g.strip - 22 - (to ? 46 : 0),
           x: x0, top: to ? y0 + 12 : undefined, vcenter: to ? undefined : y0 + g.strip / 2 + 2, color: INK }) : null;
         [saidB, toB, cityB, dateB].forEach(function (b) { if (b) blocks.push(b); });
         return { blocks: blocks };
       },
-      mark: function (ctx, format) {
-        const story = format === "story";
-        mark(ctx, story ? 990 : 1020, story ? 1526 : 1044, story ? 26 : 22, "#4f4739", null, 0.66);
+      mark: function (ctx, format, env) {
+        const story = format === "story", dark = onDark(env);
+        mark(ctx, story ? 990 : 1020, story ? 1526 : 1044, story ? 26 : 22, dark ? "#ffffff" : MARK_INK, dark ? "rgba(20,24,60,.35)" : null, dark ? 0.78 : 0.68);
       }
     };
   })();
@@ -866,13 +997,13 @@
         const sh = story ? { color: "rgba(0,0,0,.5)", blur: 6, dy: 1 } : null;
         const said = saidOf(env), to = toOf(env);
         const blocks = [];
-        const saidB = said ? block(env, { text: said, family: HAND, weight: 600, size: story ? 60 : 52, maxW: wordsW, maxH: story ? 100 : 66,
+        const saidB = said ? block(env, { text: said, family: HAND, weight: 400, cap: HAND_CAP, size: story ? 58 : 50, maxW: wordsW, maxH: story ? 100 : 66,
           x: x0, y: yA, color: WARM, shadow: sh }) : null;
         const partsB = [to, cityOf(env), env.info.line].filter(Boolean).join(" · ");
         // the details line is never smaller than 24 px (story) / 20 px (square): it wraps to two lines first
         // (two lines are set at 85% of the size, so the sizes below give 24.6 and 20.4 px)
         const dSize = story ? 29 : 24;
-        const dateB = block(env, { kind: "fade", text: partsB, family: SERIF, style: "italic", weight: 500, size: dSize, maxW: detailW, maxLines: 2,
+        const dateB = block(env, { kind: "fade", text: partsB, family: SERIF, style: "italic", weight: 600, size: dSize, maxW: detailW, maxLines: 2,
           minRatio: (story ? 24 : 20) / dSize, lineRatio: 1.15, x: x0, y: yB, color: CREAM, moon: true, shadow: sh });
         let lift = 0;
         if (story && dateB && dateB.lines.length > 1) { // two detail lines would reach the made-with mark: everything moves up a line
@@ -917,17 +1048,21 @@
     return {
       id: "letter",
       geo: geo,
-      background: function (ctx, format) { deskBackground(ctx, format, "#e6dcc8", "rgba(255,249,236,.6)", "rgba(140,112,72,.32)"); },
+      drift: 14,
+      background: function (ctx, format, env) {
+        const g = geo(format);
+        skyBackdrop(ctx, format, env, holeOf(g.sheet, g.tilt), 14);
+      },
       base: function (ctx, format) {
         const g = geo(format), s = g.sheet;
-        pieceShadowCard(ctx, s.x, s.y, s.w, s.h, 4, "#fbf6e8", 40, 15, 0.34);
+        pieceShadowCard(ctx, s.x, s.y, s.w, s.h, 4, "#fffaf0", 40, 15, 0.32);
         ctx.save();
         rr(ctx, s.x, s.y, s.w, s.h, 4); ctx.clip();
         const pg = ctx.createLinearGradient(s.x, s.y, s.x + s.w, s.y + s.h);
-        pg.addColorStop(0, "rgba(255,255,255,.4)"); pg.addColorStop(1, "rgba(214,196,150,.22)");
+        pg.addColorStop(0, "rgba(255,255,255,.4)"); pg.addColorStop(1, "rgba(236,214,190,.2)");
         ctx.fillStyle = pg; ctx.fillRect(s.x, s.y, s.w, s.h);
         // faint ruled lines, and a pale margin line
-        ctx.strokeStyle = "rgba(96,130,170,.26)"; ctx.lineWidth = 1.4;
+        ctx.strokeStyle = "rgba(96,130,190,.26)"; ctx.lineWidth = 1.4;
         for (let y = g.r0 - g.pitch * Math.floor((g.r0 - s.y - 30) / g.pitch); y < s.y + s.h - 36; y += g.pitch) {
           ctx.beginPath(); ctx.moveTo(s.x + 18, y + 5); ctx.lineTo(s.x + s.w - 18, y + 5); ctx.stroke();
         }
@@ -937,16 +1072,16 @@
         const fy = s.y + s.h * 0.52, fg = ctx.createLinearGradient(0, fy - 14, 0, fy + 14);
         fg.addColorStop(0, "rgba(120,100,60,0)"); fg.addColorStop(0.5, "rgba(120,100,60,.07)"); fg.addColorStop(1, "rgba(255,255,255,.10)");
         ctx.fillStyle = fg; ctx.fillRect(s.x, fy - 14, s.w, 28);
-        grain(ctx, s.x, s.y, s.w, s.h, "multiply", 0.09);
+        grain(ctx, s.x, s.y, s.w, s.h, "multiply", 0.045);
         ctx.restore();
-        ctx.strokeStyle = "rgba(120,100,70,.18)"; ctx.lineWidth = 1.2; rr(ctx, s.x + 0.6, s.y + 0.6, s.w - 1.2, s.h - 1.2, 4); ctx.stroke();
+        ctx.strokeStyle = "rgba(90,84,150,.18)"; ctx.lineWidth = 1.2; rr(ctx, s.x + 0.6, s.y + 0.6, s.w - 1.2, s.h - 1.2, 4); ctx.stroke();
       },
       over: function (ctx, format) {
         const g = geo(format), w = g.win;
         ctx.save();
-        ctx.strokeStyle = "rgba(50,40,25,.25)"; ctx.lineWidth = 1.3; ctx.strokeRect(w.x - 0.6, w.y - 0.6, w.w + 1.2, w.h + 1.2);
+        ctx.strokeStyle = "rgba(40,44,90,.25)"; ctx.lineWidth = 1.3; ctx.strokeRect(w.x - 0.6, w.y - 0.6, w.w + 1.2, w.h + 1.2);
         ctx.restore();
-        washi(ctx, w.x + w.w / 2 + 6, w.y + 2, 2 * DEG, 210, 52, "244,214,122");
+        washi(ctx, w.x + w.w / 2 + 6, w.y + 2, 2 * DEG, 210, 52, "255,184,206");
       },
       text: function (env) {
         const g = geo(env.format), story = env.format === "story", s = g.sheet;
@@ -955,25 +1090,25 @@
         const blocks = [];
         let r = 0;
         if (to) {
-          const b = block(env, { text: "Dear " + to + ",", family: HAND, weight: 600, size: story ? 54 : 52, maxW: maxW, maxLines: 1, minRatio: 0.6, x: x0, y: g.r0 + r * g.pitch, color: INK });
+          const b = block(env, { text: "Dear " + to + ",", family: HAND, weight: 400, cap: HAND_CAP, size: story ? 52 : 50, maxW: maxW, maxLines: 1, minRatio: 0.6, x: x0, y: g.r0 + r * g.pitch, color: INK });
           if (b) blocks.push(b);
           r += 2;
         } else r += 1;
         if (said) {
-          const b = block(env, { text: said, family: HAND, weight: 600, size: story ? 70 : 68, maxW: maxW, lineH: g.pitch, x: x0, y: g.r0 + r * g.pitch, color: "#233459" });
+          const b = block(env, { text: said, family: HAND, weight: 400, cap: HAND_CAP, size: story ? 64 : 62, maxW: maxW, lineH: g.pitch, x: x0, y: g.r0 + r * g.pitch, color: "#22307a" });
           if (b) { blocks.push(b); r += b.lines.length + 1; }
         } else r += 1;
         const city = (env.settings.city || "").trim();
         const sky = (city ? "the sky over " + city : "the sky today") + ", " + env.info.line;
         const yS = g.r0 + r * g.pitch, limit = s.y + s.h - 64;           // the last line must stay on the sheet
         const rows = Math.max(1, Math.min(2, Math.floor((limit - yS) / g.pitch) + 1));
-        const b = block(env, { kind: "fade", text: sky, family: HAND, weight: 600, size: story ? 40 : 38, maxW: maxW, maxLines: rows, lineH: g.pitch, x: x0, y: yS, color: "#4d6089", moonColor: "#2c406e", moon: true });
+        const b = block(env, { kind: "fade", text: sky, family: HAND, weight: 400, cap: HAND_CAP, size: story ? 36 : 34, maxW: maxW, maxLines: rows, lineH: g.pitch, x: x0, y: yS, color: "#4a5a9e", moonColor: "#2c3a78", moon: true });
         if (b) blocks.push(b);
         return { blocks: blocks };
       },
       mark: function (ctx, format) {
         const g = geo(format), s = g.sheet, story = format === "story";
-        mark(ctx, s.x + s.w - 34, s.y + s.h - 28, story ? 26 : 22, "#4f4232", null, 0.62);
+        mark(ctx, s.x + s.w - 34, s.y + s.h - 28, story ? 26 : 22, MARK_INK, null, 0.62);
       }
     };
   })();
@@ -1005,14 +1140,14 @@
         const sh = { color: "rgba(0,0,0,.5)", blur: 8, dx: 0, dy: 1 };
         const said = saidOf(env), to = toOf(env);
         const blocks = [];
-        const saidB = said ? block(env, { text: said, family: SERIF, style: "italic", weight: 500, size: story ? 52 : 46, maxW: x1 - x0, maxH: story ? 120 : 100, x: x0, y: yA, color: "#ffffff", shadow: sh }) : null;
+        const saidB = said ? block(env, { text: said, family: SERIF, style: "italic", weight: 600, size: story ? 52 : 46, maxW: x1 - x0, maxH: story ? 120 : 100, x: x0, y: yA, color: "#ffffff", shadow: sh }) : null;
         if (saidB && saidB.lines.length > 1) {
           const up = (saidB.lines.length - 1) * saidB.size * 1.1;
           saidB.lines.forEach(function (l) { l.y -= up; });
           saidB.top -= up; saidB.bottom -= up;
         }
         const line = [to, cityOf(env) + " · " + env.info.time].filter(Boolean).join(" · ");
-        const dateB = block(env, { kind: "fade", text: line, family: SERIF, style: "normal", weight: 500, size: story ? 27 : 24, maxW: x1 - x0 - (story ? 0 : 0), maxLines: 1, minRatio: 0.6,
+        const dateB = block(env, { kind: "fade", text: line, family: SERIF, style: "italic", weight: 600, size: story ? 27 : 24, maxW: x1 - x0 - (story ? 0 : 0), maxLines: 1, minRatio: 0.6,
           x: x0, y: yB, color: "rgba(255,255,255,.92)", moon: true, shadow: sh });
         [saidB, dateB].forEach(function (b) { if (b) blocks.push(b); });
         return { blocks: blocks };
@@ -1029,6 +1164,6 @@
 
   LU.finishes = {
     get: get, box: box, cropFor: cropFor, plan: plan, layerRect: layerRect, ZOOM: ZOOM, drawBlocks: drawBlocks, block: block, mark: mark,
-    HAND: HAND, SERIF: SERIF, SANS: SANS, POSTMARK: POSTMARK, SITE: SITE, _rr: rr
+    loadFonts: loadFonts, HAND: HAND, SERIF: SERIF, SANS: SANS, POSTMARK: POSTMARK, SITE: SITE, _rr: rr
   };
 })();

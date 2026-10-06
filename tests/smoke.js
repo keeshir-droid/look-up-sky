@@ -170,14 +170,14 @@ try {
   report(["ios", "android", "desktop"].indexOf(p) >= 0, "share.platform() returns ios / android / desktop", p);
 } catch (e) { report(false, "share.platform() runs in Node", e.message); }
 
-// the font family the engine asks for is the one the page loads
-const css = fs.readFileSync(path.join(ROOT, "src", "styles.css"), "utf8");
-report(/@font-face\s*{[^}]*font-family:\s*["']?Caveat["']?[^}]*caveat-600\.woff2/s.test(css), "styles.css loads fonts/caveat-600.woff2 as \"Caveat\"");
-const faceUrl = /@font-face\s*{[^}]*url\(["']?([^"')]+caveat-600\.woff2)["']?\)/s.exec(css);
-report(!!faceUrl && fs.existsSync(path.join(ROOT, "src", faceUrl[1])), "the font url in styles.css resolves to a real file", faceUrl && faceUrl[1]);
-report(fs.existsSync(path.join(ROOT, "fonts", "caveat-600.woff2")) && fs.existsSync(path.join(ROOT, "fonts", "OFL.txt")), "fonts/ has caveat-600.woff2 and OFL.txt");
+// the fonts the engine asks for (Gochi Hand 400 and Fraunces italic 600, registered by LU.finishes.loadFonts via the FontFace API)
+// are real files with their licences
 const engineText = ["card", "finishes"].map(function (n) { return fs.readFileSync(path.join(ROOT, "src", "engine", n + ".js"), "utf8"); }).join("\n");
-report(/Caveat/.test(engineText), "the engine asks for the font family \"Caveat\"");
+report(/"Gochi Hand"/.test(engineText) && /gochi-hand-400\.woff2/.test(engineText), "the engine asks for the font family \"Gochi Hand\" (gochi-hand-400.woff2)");
+report(/"Fraunces"/.test(engineText) && /fraunces-600-italic\.woff2/.test(engineText), "the engine asks for the font family \"Fraunces\" (fraunces-600-italic.woff2)");
+report(!/Caveat/.test(engineText), "the engine no longer mentions Caveat");
+report(["gochi-hand-400.woff2", "fraunces-600-italic.woff2", "OFL-gochihand.txt", "OFL-fraunces.txt"].every(function (f) { return fs.existsSync(path.join(ROOT, "fonts", f)); }), "fonts/ has Gochi Hand and Fraunces with their OFL texts");
+report(typeof LU.finishes.loadFonts === "function", "LU.finishes.loadFonts exists");
 
 // the sample picture exists and is light
 const sampleFile = path.join(ROOT, "assets", "sample-sky.jpg");
