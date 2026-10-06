@@ -1,0 +1,20 @@
+{
+  "name": "look-up-sky",
+  "version": "1.0.0",
+  "description": "Saw a shape in the clouds? Send it to someone far away.",
+  "scripts": {
+    "test": "node tests/engine/card.test.js",
+    "lint": "echo 'No linter configured' && exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/keeshir-droid/look-up-sky.git"
+  },
+  "keywords": ["clouds", "sky", "postcard", "creative"],
+  "author": "Risheek Mittal",
+  "license": "MIT",
+  "homepage": "https://look-up-sky.vercel.app",
+  "dependencies": {
+    "@vercel/analytics": "^1.3.1"
+  }
+}
