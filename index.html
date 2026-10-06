@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Look Up</title>
+  <meta name="description" content="Saw a shape in the clouds? Photograph the sky, trace what you see, and send it to someone far away as a postcard, a polaroid or a story. Free, no account, and your photo stays on your phone.">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#f6f2ea">
+  <meta property="og:title" content="Look Up: saw a shape in the clouds? Send it to someone.">
+  <meta property="og:description" content="Photograph the sky, trace the shape you see, and send it to someone far away. Free. Your photo stays on your phone.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://look-up-sky.vercel.app/">
+  <meta property="og:image" content="https://look-up-sky.vercel.app/assets/og.jpg">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Look Up: saw a shape in the clouds? Send it to someone.">
+  <meta name="twitter:description" content="Photograph the sky, trace the shape you see, and send it to someone far away. Free. Your photo stays on your phone.">
+  <meta name="twitter:image" content="https://look-up-sky.vercel.app/assets/og.jpg">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%231f3a5f'/%3E%3Cpath d='M7 17.5h9.5a3.6 3.6 0 0 0 .5-7.2 5 5 0 0 0-9.6-.6A3.9 3.9 0 0 0 7 17.5z' fill='none' stroke='%23fffdf8' stroke-width='1.7' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="preload" href="fonts/caveat-600.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="src/styles.css">
+  <!-- Vercel Web Analytics (page views). Same-origin once deployed; a harmless 404 until it is switched on in the Vercel dashboard. -->
+  <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+  <script defer src="/_vercel/insights/script.js" onerror="this.remove()"></script>
+</head>
+<body data-screen="landing">
+  <noscript>
+    <div class="noscript">
+      <h1>Look Up needs JavaScript</h1>
+      <p>Switch it on in your browser settings and give this page a refresh. Then photograph the sky.</p>
+    </div>
+  </noscript>
+
+  <div id="app">
+
+    <!-- 1. Landing (Step 1) -->
+    <section id="screen-landing" class="screen landing is-active" aria-label="Look Up">
+      <svg class="drift d1" viewBox="0 0 120 50" aria-hidden="true" focusable="false"><path d="M18 44h84a15 15 0 0 0 2-29.8A22 22 0 0 0 62 8a19 19 0 0 0-30 11A13 13 0 0 0 18 44z" fill="#fff" fill-opacity=".75"/></svg>
+      <svg class="drift d2" viewBox="0 0 120 50" aria-hidden="true" focusable="false"><path d="M18 44h84a15 15 0 0 0 2-29.8A22 22 0 0 0 62 8a19 19 0 0 0-30 11A13 13 0 0 0 18 44z" fill="#fff" fill-opacity=".6"/></svg>
+      <header class="top top-landing">
+        <a class="wordmark" href="./" aria-label="Look Up, home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 18h10a4 4 0 0 0 .6-7.95A5.5 5.5 0 0 0 7.1 9.6 4.2 4.2 0 0 0 7 18z"/></svg>
+          <span>look up</span>
+        </a>
+      </header>
+      <main class="landing-main">
+        <h1 class="headline" tabindex="-1">Saw a shape in the clouds? <span class="hl">Send it to someone.</span></h1>
+
+        <div class="hero" id="hero">
+          <div class="hero-card" id="heroCard" role="img" aria-label="A postcard of a sky with a white line drawing a dolphin in the clouds, and a postmark stamping down">
+            <!-- shown until the real animated card is ready, or if it can't start -->
+            <svg class="hero-fallback" viewBox="0 0 300 300" aria-hidden="true" focusable="false" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <linearGradient id="hfSky" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0" stop-color="#5f93c9"/>
+                  <stop offset="1" stop-color="#bfd8ee"/>
+                </linearGradient>
+              </defs>
+              <rect width="300" height="300" fill="#ece4d3"/>
+              <g transform="rotate(-1.5 150 150)">
+                <rect x="30" y="48" width="240" height="190" rx="3" fill="#fffdf8" stroke="#e1d8c4"/>
+                <rect x="38" y="56" width="224" height="150" fill="url(#hfSky)"/>
+                <g fill="#fff" fill-opacity=".85">
+                  <ellipse cx="120" cy="128" rx="52" ry="20"/>
+                  <ellipse cx="96" cy="120" rx="26" ry="18"/>
+                  <ellipse cx="142" cy="118" rx="26" ry="16"/>
+                  <ellipse cx="214" cy="86" rx="30" ry="10" fill-opacity=".6"/>
+                </g>
+                <path class="hero-line" pathLength="100" d="M72 134c-6-22 18-38 48-34 22 3 34-8 54-8 22 0 30 18 14 28-12 8-30 4-44 14-14 10-44 16-62 8-6-3-9-5-10-8z" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <rect x="38" y="206" width="224" height="30" fill="#fffdf8"/>
+                <text class="hero-text" x="48" y="228">I saw a dolphin.</text>
+                <g transform="translate(222 64)">
+                  <rect width="34" height="40" fill="#fffdf8" stroke="#d9cfba"/>
+                  <rect x="4" y="4" width="26" height="26" fill="#9bc0e3"/>
+                  <text x="17" y="37" text-anchor="middle" font-size="5" font-family="Georgia, serif" fill="#44546c" letter-spacing=".4">LOOK UP</text>
+                </g>
+                <g transform="translate(212 98)">
+                  <g class="hero-stamp" fill="none" stroke="#2c3e5c" stroke-width="1.6" opacity=".78">
+                    <circle r="22"/>
+                    <circle r="17"/>
+                    <path d="M-34 -4h12M-34 4h12" stroke-linecap="round"/>
+                  </g>
+                </g>
+              </g>
+            </svg>
+            <canvas id="heroCanvas" class="hero-canvas" aria-hidden="true"></canvas>
+          </div>
+        </div>
+
+        <div class="cta">
+          <button id="btnPhoto" class="btn btn-xl" type="button"><span data-icon="camera" aria-hidden="true"></span><span>Photograph the sky</span></button>
+        </div>
+        <p class="links">
+          <button id="btnChoose" class="link" type="button">Choose a photo</button>
+        </p>
+        <p class="sample-line">No sky handy? <button id="btnSample" class="link" type="button">Try it on a sample sky.</button></p>
+        <p class="trust"><span class="ico" data-icon="lock" aria-hidden="true"></span><span class="trust-text">Free. No account. Your photo stays on your phone.</span></p>
+        <aside class="inapp" data-inapp hidden aria-label="A tip about this browser">
+          <span class="inapp-ico" data-icon="open" aria-hidden="true"></span>
+          <p class="inapp-text"><strong>Opened inside another app?</strong> For the smoothest saving, open this page in your browser.<small>How: tap &bull;&bull;&bull; then Open in browser</small></p>
+          <button class="inapp-x" type="button" data-inapp-close aria-label="Dismiss this tip"><span data-icon="close" aria-hidden="true"></span></button>
+        </aside>
+        <p class="desk-hint">On a computer? Paste a photo right here.</p>
+      </main>
+      <div data-footer></div>
+    </section>
+
+    <!-- Opening the sky (Step 2, a gentle busy state) -->
+    <section id="screen-working" class="screen working" aria-label="Opening your sky">
+      <div class="work-card"><div class="work-photo"><img id="workImg" alt="" hidden></div></div>
+      <svg class="work-cloud" viewBox="0 0 120 50" aria-hidden="true" focusable="false"><path d="M18 44h84a15 15 0 0 0 2-29.8A22 22 0 0 0 62 8a19 19 0 0 0-30 11A13 13 0 0 0 18 44z" fill="#fff" stroke="#1f3a5f" stroke-opacity=".35" stroke-width="2"/></svg>
+      <p class="work-line" id="workLine" role="status" aria-live="polite">Opening your sky&hellip;</p>
+    </section>
+
+    <!-- 2. Trace (Step 3, the magic moment) -->
+    <section id="screen-trace" class="screen trace" aria-label="Trace the shape you see">
+      <header class="top">
+        <button id="btnTraceBack" class="btn-back" type="button"><span data-icon="back" aria-hidden="true"></span><span>New sky</span></button>
+        <h1 class="vh">Trace the shape you see</h1>
+        <div class="pens" id="penRow" role="group" aria-label="Pen colour"></div>
+      </header>
+      <div class="stage" id="stage">
+        <p class="note" id="darkNote" role="status" hidden>Clouds are easier to see in daylight, but you can still draw.</p>
+        <div class="sky-wrap" id="skyWrap">
+          <canvas id="traceCanvas" role="img" aria-label="Your sky. Drag a finger over it to trace the shape you see."></canvas>
+          <canvas id="fadeCanvas" aria-hidden="true"></canvas>
+          <div class="hint" id="hint" aria-hidden="true">
+            <svg class="hint-art" viewBox="0 0 150 100" focusable="false">
+              <g transform="translate(26 62)">
+                <path class="hint-trail" pathLength="100" d="M0 0C-4 -34 40 -52 78 -34C112 -18 108 22 70 24C42 26 18 14 2 2" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                <g class="hint-finger" opacity="0">
+                  <circle r="13" fill="#fff" fill-opacity=".35"/>
+                  <circle r="6" fill="#fff"/>
+                  <path d="M3 4 L14 26 Q16 31 11 32 L5 32 Q0 31 0 26 Z" fill="#f4cfae" stroke="#b98a68" stroke-width="1.6" stroke-linejoin="round" transform="translate(-2 2)"/>
+                  <animateMotion dur="3s" repeatCount="indefinite" calcMode="linear" keyPoints="0;1;1" keyTimes="0;.7;1" path="M0 0C-4 -34 40 -52 78 -34C112 -18 108 22 70 24C42 26 18 14 2 2"/>
+                  <animate attributeName="opacity" values="0;1;1;0" keyTimes="0;.08;.9;1" dur="3s" repeatCount="indefinite"/>
+                </g>
+              </g>
+            </svg>
+            <p class="hint-text">Trace the shape you see.</p>
+          </div>
+        </div>
+        <p class="caption" id="traceCaption" role="status" aria-live="polite"></p>
+      </div>
+      <div class="bar bar-trace">
+        <button id="btnUndo" class="btn btn-ghost btn-sm" type="button"><span data-icon="undo" aria-hidden="true"></span><span>Undo</span></button>
+        <button id="btnClear" class="btn btn-ghost btn-sm" type="button"><span data-icon="clear" aria-hidden="true"></span><span>Clear</span></button>
+        <button id="btnTraceNext" class="btn" type="button"><span>Next</span><span data-icon="next" aria-hidden="true"></span></button>
+      </div>
+    </section>
+
+    <!-- 3. Words (Step 4) -->
+    <section id="screen-words" class="screen words" aria-label="Say what you saw">
+      <header class="top">
+        <button id="btnWordsBack" class="btn-back" type="button"><span data-icon="back" aria-hidden="true"></span><span>Back</span></button>
+        <h1 class="top-title">Say what you saw</h1>
+        <span class="top-spacer" aria-hidden="true"></span>
+      </header>
+      <div class="words-scroll" id="wordsScroll">
+        <div class="preview preview-sm" id="wordsPreviewWrap"><canvas id="wordsCanvas" role="img" aria-label="A small preview of your card"></canvas></div>
+        <p class="when" id="whenLine"></p>
+        <div class="fields">
+          <label class="field" for="fSaid"><span>What did you see?</span>
+            <input id="fSaid" type="text" maxlength="40" autocomplete="off" autocapitalize="sentences" enterkeyhint="next" placeholder="I saw a whale." aria-describedby="saidHint">
+            <small class="field-hint" id="saidHint">Leave it blank and the card keeps it simple.</small></label>
+          <label class="field" for="fCity"><span>The sky over&hellip;</span>
+            <input id="fCity" type="text" maxlength="28" autocomplete="off" autocapitalize="words" enterkeyhint="next" placeholder="Your city"></label>
+          <label class="field" for="fTo"><span>For <em>(if you like)</em></span>
+            <input id="fTo" type="text" maxlength="20" autocomplete="off" autocapitalize="words" enterkeyhint="done" placeholder="Maya"></label>
+        </div>
+        <p class="small">The date and time come from your phone, so it says when you really looked up.</p>
+      </div>
+      <div class="bar bar-words">
+        <button id="btnWordsNext" class="btn" type="button"><span>Next</span><span data-icon="next" aria-hidden="true"></span></button>
+      </div>
+    </section>
+
+    <!-- 4. Look (Step 5) -->
+    <section id="screen-look" class="screen look" aria-label="Pick a look">
+      <header class="top">
+        <button id="btnLookBack" class="btn-back" type="button"><span data-icon="back" aria-hidden="true"></span><span>Back</span></button>
+        <h1 class="top-title">Pick a look</h1>
+        <span class="top-spacer" aria-hidden="true"></span>
+      </header>
+      <main class="look-main">
+        <div class="preview" id="lookPreviewWrap"><canvas id="lookCanvas" role="img" aria-label="Preview of your card"></canvas></div>
+        <div class="chips-wrap" id="chipsWrap">
+          <div class="chips" id="finishRow" role="group" aria-label="Look"></div>
+        </div>
+        <button id="glowToggle" class="toggle" type="button" role="switch" aria-checked="false" aria-disabled="true">
+          <span class="toggle-text"><strong>Make it glow</strong><small id="glowHint">Close your shape to make it glow</small></span>
+          <span class="sw" aria-hidden="true"><i></i></span>
+        </button>
+        <p class="edit-links">
+          <button id="btnEditWords" class="link" type="button">Edit words</button>
+          <span class="dot" aria-hidden="true">&middot;</span>
+          <button id="btnEditDrawing" class="link" type="button">Edit drawing</button>
+        </p>
+      </main>
+      <div class="bar bar-look">
+        <button id="btnSave" class="btn" type="button"><span data-icon="download" aria-hidden="true"></span><span id="saveLabel">Save image</span></button>
+        <button id="btnShareStory" class="btn btn-ghost" type="button"><span data-icon="share" aria-hidden="true"></span><span class="shareLabel">Share story</span></button>
+      </div>
+    </section>
+
+    <!-- 5. Making the video (Step 6) -->
+    <section id="screen-making" class="screen making" aria-label="Your story video">
+      <header class="top">
+        <h1 class="top-title" id="makeTitle">Making your video&hellip;</h1>
+      </header>
+      <main class="make-main">
+        <div class="story-wrap"><canvas id="makeCanvas" role="img" aria-label="Preview of your story video"></canvas></div>
+        <div class="progress" id="makeProgress" role="progressbar" aria-label="Making your video" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><i></i></div>
+        <p class="make-note" id="makeNote" role="status" aria-live="polite">Hang tight, this only takes a few seconds.</p>
+      </main>
+      <div class="bar bar-making">
+        <button id="btnMakeCancel" class="btn btn-ghost" type="button">Cancel</button>
+        <button id="btnShareNow" class="btn" type="button" hidden><span id="shareNowIcon" data-icon="share" aria-hidden="true"></span><span id="shareNowLabel">Share now</span></button>
+        <button id="btnMakeBack" class="btn btn-ghost" type="button" hidden>Back</button>
+      </div>
+    </section>
+
+    <!-- 6. Done (Step 7) -->
+    <section id="screen-done" class="screen done" aria-label="Done">
+      <main class="done-main">
+        <div class="done-card">
+          <img id="doneImg" alt="Your card" hidden>
+          <div class="done-badge" aria-hidden="true" data-icon="check"></div>
+        </div>
+        <h1 class="done-title" id="doneTitle" tabindex="-1">Saved.</h1>
+        <p class="done-sub">Send it to someone who&rsquo;s far away.</p>
+        <p class="done-note" id="doneNote" role="status"></p>
+        <aside class="inapp" data-inapp hidden aria-label="A tip about this browser">
+          <span class="inapp-ico" data-icon="open" aria-hidden="true"></span>
+          <p class="inapp-text"><strong>Opened inside another app?</strong> For the smoothest saving, open this page in your browser.<small>How: tap &bull;&bull;&bull; then Open in browser</small></p>
+          <button class="inapp-x" type="button" data-inapp-close aria-label="Dismiss this tip"><span data-icon="close" aria-hidden="true"></span></button>
+        </aside>
+        <div class="done-links">
+          <button id="btnTraceAgain" class="btn btn-soft" type="button"><span data-icon="pen" aria-hidden="true"></span><span>Trace again</span></button>
+          <button id="btnNewSky" class="btn btn-ghost" type="button">New sky</button>
+        </div>
+        <div data-footer></div>
+      </main>
+      <div class="bar bar-done">
+        <button id="btnDoneShare" class="btn" type="button"><span data-icon="share" aria-hidden="true"></span><span class="shareLabel">Share story</span></button>
+        <button id="btnDoneSave" class="btn btn-ghost" type="button"><span data-icon="download" aria-hidden="true"></span><span>Save image</span></button>
+      </div>
+    </section>
+
+    <!-- 7. Errors: one friendly message, one button -->
+    <section id="screen-error" class="screen error" aria-label="Something went wrong">
+      <main class="err-main">
+        <div class="err-card">
+          <svg class="err-art" viewBox="0 -8 120 78" aria-hidden="true" focusable="false">
+            <path d="M26 58h70a18 18 0 0 0 3-35.7A26 26 0 0 0 50 14a22 22 0 0 0-34 17A14 14 0 0 0 26 58z" fill="#fffdf8" stroke="#1f3a5f" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M46 40q6-5 12 0M72 40q6-5 12 0M52 50q8 6 16 0" fill="none" stroke="#6c6a64" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <h1 class="err-title" id="errTitle" tabindex="-1">Hmm, that didn&rsquo;t work.</h1>
+          <p class="err-detail" id="errDetail" role="alert"></p>
+          <button id="errBtn" class="btn btn-xl" type="button">Start over</button>
+        </div>
+      </main>
+    </section>
+
+    <!-- The engine did not load -->
+    <section id="screen-broken" class="screen error" aria-label="Look Up did not load">
+      <main class="err-main">
+        <div class="err-card">
+          <svg class="err-art" viewBox="0 -8 120 78" aria-hidden="true" focusable="false">
+            <path d="M26 58h70a18 18 0 0 0 3-35.7A26 26 0 0 0 50 14a22 22 0 0 0-34 17A14 14 0 0 0 26 58z" fill="#fffdf8" stroke="#1f3a5f" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M46 40q6-5 12 0M72 40q6-5 12 0M52 50q8 6 16 0" fill="none" stroke="#6c6a64" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+          <h1 class="err-title" tabindex="-1">The sky is still waking up.</h1>
+          <p class="err-detail">Something didn&rsquo;t load. Check your connection and give it another go.</p>
+          <button id="brokenBtn" class="btn btn-xl" type="button">Refresh</button>
+        </div>
+      </main>
+      <div data-footer></div>
+    </section>
+
+  </div>
+
+  <!-- A single full-size frame (address shortcut screen=frame) -->
+  <div id="frameHolder"><canvas id="frameCanvas" width="1080" height="1080"></canvas></div>
+
+  <!-- Saving didn't work inside another app's browser: say so kindly, with a way forward -->
+  <div class="inapp-sheet" id="inappSheet" hidden>
+    <div class="inapp-backdrop" data-inapp-sheet-close></div>
+    <div class="inapp-card" role="alertdialog" aria-modal="true" aria-labelledby="inappSheetTitle" aria-describedby="inappSheetText">
+      <h2 id="inappSheetTitle">Saving works best in your browser.</h2>
+      <p id="inappSheetText">Opened inside another app? Open this page in your browser to save it. Tap &bull;&bull;&bull; then Open in browser. You&rsquo;ll make your card again there, and it only takes a minute.</p>
+      <div class="inapp-pic" id="inappPic" hidden>
+        <img id="inappSheetImg" alt="Your card">
+        <small>Or press and hold the picture, then choose Save.</small>
+      </div>
+      <button id="btnInappCopy" class="btn" type="button"><span data-icon="open" aria-hidden="true"></span><span>Copy the link</span></button>
+      <button id="btnInappClose" class="link" type="button" data-inapp-sheet-close>Not now</button>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- Photo inputs: camera and gallery -->
+  <input id="cameraInput" class="vh" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+  <input id="galleryInput" class="vh" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
+
+  <script defer src="src/engine/util.js"></script>
+  <script defer src="src/engine/decode.js"></script>
+  <script defer src="src/engine/sky.js"></script>
+  <script defer src="src/engine/trace.js"></script>
+  <script defer src="src/engine/moon.js"></script>
+  <script defer src="src/engine/words.js"></script>
+  <script defer src="src/engine/finishes.js"></script>
+  <script defer src="src/engine/card.js"></script>
+  <script defer src="src/engine/sample.js"></script>
+  <script defer src="src/engine/export.js"></script>
+  <script defer src="src/engine/share.js"></script>
+  <script defer src="src/app.js"></script>
+</body>
+</html>

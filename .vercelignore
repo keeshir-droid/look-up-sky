@@ -1,0 +1,13 @@
+tests/
+notes/
+shots/
+.claude/
+node_modules/
+VERIFY.md
+HANDOFF.md
+PLAN.md
+CLAUDE.md
+*.md.bak
+.gitignore
+.gitattributes
+docs/

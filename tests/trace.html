@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Look Up: the line (M1 test page)</title>
+<!--
+  Never deployed. Engine-builder's M1 test page (PLAN.md 7.4).
+
+  tests/trace.html?photo=real/01-blue-rooftops.jpg            overview: original | improved, then 4 simulated finger
+                                                              traces, each raw | smoothed line | smoothed line + glow
+  ...&only=sky[&size=620]                                     just the before / after
+  ...&only=whale|swoosh|heart|taps&glow=0|1&size=1080         ONE smoothed trace, full size, 1:1 (a true crop of the card)
+       optional: &pen=white|gold|ink  &crop=0 (whole photo)  &info=0  &seed=7  &jitter=3  &progress=0..1
+  ?photo=../assets/sample-sky.jpg                             works with the sample sky too
+  tests/trace.html?draw=1[&photo=...]                         choose a photo and trace with a finger or mouse
+-->
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font:14px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;background:#f6f1e7;color:#2b2b2b;padding:12px;max-width:100vw;overflow-x:hidden}
+  h1{font:600 18px Georgia,serif;margin:0 0 4px}
+  h2{font:600 15px Georgia,serif;margin:18px 0 6px}
+  .meta{font-size:12.5px;color:#555;margin:2px 0 8px}
+  .meta b{color:#1f3a5f}
+  .row{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-start}
+  .cell{display:flex;flex-direction:column;gap:3px}
+  .cell span{font-size:12px;color:#666}
+  canvas{display:block;background:#ddd;border-radius:4px;max-width:100%;height:auto}
+  .err{background:#fde8e8;border:1px solid #d99;padding:8px 10px;border-radius:6px;color:#822}
+  /* draw mode */
+  .bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+  .btn{min-height:44px;padding:0 16px;border-radius:22px;border:1.5px solid #1f3a5f;background:#fff;color:#1f3a5f;font:600 15px system-ui,sans-serif}
+  .btn.on{background:#1f3a5f;color:#fff}
+  .pen{width:44px;height:44px;border-radius:50%;border:3px solid transparent;padding:0}
+  .pen.on{border-color:#1f3a5f}
+  .pen i{display:block;width:26px;height:26px;border-radius:50%;margin:auto;border:1px solid #0003}
+  #stage{touch-action:none;width:100%;cursor:crosshair;user-select:none;-webkit-user-select:none}
+  input[type=file]{max-width:100%}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="../src/engine/util.js"></script>
+<script src="../src/engine/decode.js"></script>
+<script src="../src/engine/sky.js"></script>
+<script src="../src/engine/trace.js"></script>
+<script src="engine/simulate.js"></script>
+<script>
+(function () {
+  "use strict";
+  const LU = window.LU, SIM = window.LUTEST.simulate;
+  const Q = new URLSearchParams(location.search);
+  const root = document.getElementById("root");
+  const photoParam = Q.get("photo");
+  const only = Q.get("only");
+  const seed = parseInt(Q.get("seed") || "7", 10);
+  const jitter = Q.get("jitter") != null ? parseFloat(Q.get("jitter")) : 3;
+
+  function el(tag, attrs, kids) {
+    const e = document.createElement(tag);
+    if (attrs) for (const k in attrs) { if (k === "text") e.textContent = attrs[k]; else if (k === "html") e.innerHTML = attrs[k]; else e.setAttribute(k, attrs[k]); }
+    (kids || []).forEach(function (c) { e.appendChild(c); });
+    return e;
+  }
+  function canvas(w, h) { const c = document.createElement("canvas"); c.width = Math.max(1, Math.round(w)); c.height = Math.max(1, Math.round(h)); return c; }
+  function cell(label, c) { return el("div", { "class": "cell" }, [c, el("span", { text: label })]); }
+  function fail(msg) { root.appendChild(el("div", { "class": "err", text: msg })); document.body.setAttribute("data-ready", "error"); }
+  function ms(v) { return v.toFixed(v < 10 ? 1 : 0) + " ms"; }
+
+  async function loadPhoto(url) {
+    let res;
+    try { res = await fetch(url); } catch (e) { throw new Error("Could not fetch " + url + ". Is the local server running (python -m http.server 8000 in the look-up folder)?"); }
+    if (!res.ok) throw new Error("Could not load " + url + " (HTTP " + res.status + ")");
+    const blob = await res.blob();
+    const file = new File([blob], url.split("/").pop(), { type: blob.type || "image/jpeg" });
+    return file;
+  }
+
+  // Photos named in the address are read through an <img> (headless screenshots with a virtual-time budget never
+  // resolve createImageBitmap). The file input in ?draw=1 uses the real LU.decode path.
+  async function urlToImageData(url, maxSide) {
+    const img = new Image();
+    img.src = url;
+    await new Promise(function (ok, bad) { img.onload = ok; img.onerror = function () { bad(new Error("could not load " + url)); }; });
+    const k = Math.min(1, maxSide / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.round(img.naturalWidth * k), h = Math.round(img.naturalHeight * k);
+    const c = canvas(w, h);
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.imageSmoothingQuality = "high";
+    g.drawImage(img, 0, 0, w, h);
+    return g.getImageData(0, 0, w, h);
+  }
+
+  async function prepareFile(file) {
+    const t0 = performance.now();
+    const imageData = file.url ? await urlToImageData(file.url, 2000) : await LU.decode.fileToImageData(file, { maxSide: 2000 });
+    const tDecode = performance.now() - t0;
+    const orig = canvas(imageData.width, imageData.height);
+    orig.getContext("2d").putImageData(imageData, 0, 0);
+    const sky = await LU.sky.prepare(imageData);
+    return { orig: orig, sky: sky, tDecode: tDecode, tPrepare: sky.stats.ms, imageData: imageData };
+  }
+
+  // the crop the cards will use: bbox of the strokes + 25% padding, grown to the window's aspect, kept inside the photo
+  function cropFor(strokes, W, H, aspect, whole) {
+    if (whole) return { x: 0, y: 0, w: W, h: H };
+    const b = LU.trace.boundsOf(strokes);
+    let cx = W / 2, cy = H / 2, w = W, h = H;
+    if (b) {
+      cx = (b.x0 + b.x1) / 2; cy = (b.y0 + b.y1) / 2;
+      w = Math.max((b.x1 - b.x0) * 1.5, 0.12 * W); h = Math.max((b.y1 - b.y0) * 1.5, 0.12 * H);
+    } else { w = W * 0.8; h = H * 0.8; }
+    if (w / h < aspect) w = h * aspect; else h = w / aspect;
+    if (w > W) { w = W; h = w / aspect; }
+    if (h > H) { h = H; w = h * aspect; }
+    let x = cx - w / 2, y = cy - h / 2;
+    x = Math.max(0, Math.min(W - w, x)); y = Math.max(0, Math.min(H - h, y));
+    return { x: x, y: y, w: w, h: h };
+  }
+
+  // draws the sky crop, optional glow, optional strokes. cw = canvas width: the line is 0.55% of it, as on a 1080 card
+  function render(c, sky, strokes, crop, o) {
+    o = o || {};
+    const ctx = c.getContext("2d");
+    const scale = c.width / crop.w, ox = -crop.x * scale, oy = -crop.y * scale;
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(sky.image, crop.x, crop.y, crop.w, crop.h, 0, 0, c.width, c.height);
+    if (o.glow && LU.trace.hasClosed(strokes)) {
+      const g = LU.trace.makeGlow(c, strokes, { scale: scale, x: ox, y: oy, feather: 30 * c.width / 1080 });
+      if (g) LU.trace.applyGlow(ctx, g, 1);
+    }
+    if (o.rawSets) { // the captured points, as they came in
+      o.rawSets.forEach(function (pts) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(255,60,60,.9)"; ctx.lineWidth = Math.max(1, c.width / 700); ctx.lineJoin = "round";
+        ctx.beginPath();
+        pts.forEach(function (p, i) { const X = ox + scale * p.x, Y = oy + scale * p.y; if (i) ctx.lineTo(X, Y); else ctx.moveTo(X, Y); });
+        ctx.stroke();
+        ctx.fillStyle = "#fff";
+        pts.forEach(function (p) { ctx.fillRect(ox + scale * p.x - 1, oy + scale * p.y - 1, 2, 2); });
+        ctx.restore();
+      });
+    }
+    if (strokes && strokes.length && !o.noStrokes) {
+      LU.trace.drawStrokes(ctx, strokes, { pen: o.pen, scale: scale, x: ox, y: oy, short: c.width, progress: o.progress == null ? 1 : o.progress });
+    }
+  }
+
+  // ---------- the four simulated traces, placed on this photo ----------
+  function makeTraces(sky) {
+    const W = sky.width, H = sky.height, S = Math.min(W, H);
+    const base = { seed: seed, photoWidth: W, jitter: jitter };
+    const whaleSize = Math.min(0.62 * W, 1.05 * H), whaleBox = { cx: W / 2, cy: H * 0.5 + 0.1 * whaleSize, size: whaleSize };
+    const out = {};
+    out.whale = { label: "Whale (closed loop, uneven speed, overshoot where it closes)", sims: [SIM.whale(whaleBox, base)], box: whaleBox };
+    const swBox = { cx: W / 2, cy: H * 0.5, size: Math.min(0.7 * W, 1.3 * H) };
+    out.swoosh = { label: "Swoosh (quick open stroke)", sims: [SIM.swoosh(swBox, Object.assign({}, base, { seed: seed + 1 }))], box: swBox };
+    const hBox = { cx: W / 2, cy: H / 2, size: 0.5 * S };
+    out.heart = { label: "Heart (closed, small overshoot)", sims: [SIM.heart(hBox, Object.assign({}, base, { seed: seed + 2 }))], box: hBox };
+    const tBox = { cx: W / 2, cy: H / 2, size: 0.3 * Math.min(W, 1.6 * H) };
+    out.taps = { label: "Two taps (dots)", sims: SIM.taps(tBox, Object.assign({}, base, { seed: seed + 3 })), box: tBox };
+    Object.keys(out).forEach(function (k) {
+      const o = out[k];
+      const t0 = performance.now(); let strokes;
+      const reps = 15;
+      for (let r = 0; r < reps; r++) strokes = o.sims.map(function (s) { return LU.trace.finish(sky, s.points); });
+      o.finishMs = (performance.now() - t0) / reps;
+      o.strokes = strokes;
+      o.rawSets = o.sims.map(function (s) { return s.points; });
+    });
+    return out;
+  }
+
+  function infoLine(p, extra) {
+    const s = p.sky, st = s.stats;
+    return el("div", { "class": "meta", html:
+      "<b>" + (photoParam || "") + "</b> &nbsp; " + s.width + "&times;" + s.height +
+      " &nbsp; tone <b>" + s.tone + "</b> &nbsp; suggested pen <b>" + s.suggestedPen + "</b> &nbsp; warning <b>" + (s.warning || "none") + "</b>" +
+      "<br>median brightness " + (st.median * 100).toFixed(0) + "% &nbsp; lit area " + (st.bright * 100).toFixed(0) + "% &nbsp; levels " + st.lo + ".." + st.hi + " &nbsp; sat " + (st.sat * 100).toFixed(0) + "% &nbsp; warm " + (st.warm * 100).toFixed(0) + "% &nbsp; blue " + (st.blue * 100).toFixed(0) + "%" +
+      "<br>timings: decode " + ms(p.tDecode) + " &nbsp; prepare (improve + stats) <b>" + ms(p.tPrepare) + "</b>" + (extra || "") });
+  }
+
+  // ---------- modes ----------
+  async function modeSky(p) {
+    const size = parseInt(Q.get("size") || "620", 10);
+    const h = Math.round(size * p.sky.height / p.sky.width);
+    const a = canvas(size, h), b = canvas(size, h);
+    a.getContext("2d").drawImage(p.orig, 0, 0, size, h);
+    b.getContext("2d").drawImage(p.sky.image, 0, 0, size, h);
+    root.appendChild(el("div", { "class": "row" }, [cell("original", a), cell("improved", b)]));
+    if (Q.get("info") !== "0") root.appendChild(infoLine(p));
+  }
+
+  async function modeOne(p, name) {
+    const traces = makeTraces(p.sky);
+    const t = traces[name];
+    if (!t) return fail("unknown trace: " + name + " (whale, swoosh, heart, taps)");
+    const size = parseInt(Q.get("size") || "1080", 10);
+    const portrait = p.sky.height > p.sky.width;
+    const aspect = parseFloat(Q.get("aspect") || (portrait ? 2 / 3 : 3 / 2));
+    const crop = cropFor(t.strokes, p.sky.width, p.sky.height, aspect, Q.get("crop") === "0");
+    const c = canvas(size, size * crop.h / crop.w);
+    c.style.width = c.width + "px"; c.style.maxWidth = "none"; // 1:1, never scaled
+    const pen = Q.get("pen") || p.sky.suggestedPen;
+    render(c, p.sky, t.strokes, crop, { glow: Q.get("glow") === "1", pen: pen, progress: Q.get("progress") != null ? parseFloat(Q.get("progress")) : 1 });
+    root.appendChild(c);
+    if (Q.get("info") !== "0") root.appendChild(infoLine(p, " &nbsp; finish (" + name + ") " + ms(t.finishMs) + " &nbsp; pen " + pen + " &nbsp; glow " + (Q.get("glow") === "1" ? "on" : "off") + " &nbsp; closed: " + t.strokes.map(function (s) { return s.kind + (s.closed ? " closed" : "") + " (" + s.points.length + " pts)"; }).join(", ")));
+  }
+
+  async function modeOverview(p) {
+    root.appendChild(el("h1", { text: "Look Up: the line" }));
+    const traces = makeTraces(p.sky);
+    root.appendChild(infoLine(p, " &nbsp; finish: " + Object.keys(traces).map(function (k) { return k + " " + ms(traces[k].finishMs); }).join(", ")));
+
+    const W = 400, h = Math.round(W * p.sky.height / p.sky.width);
+    const a = canvas(W, h), b = canvas(W, h), all = canvas(W, h);
+    a.getContext("2d").drawImage(p.orig, 0, 0, W, h);
+    b.getContext("2d").drawImage(p.sky.image, 0, 0, W, h);
+    const whole = { x: 0, y: 0, w: p.sky.width, h: p.sky.height };
+    const allStrokes = [].concat(traces.whale.strokes, traces.swoosh.strokes, traces.heart.strokes, traces.taps.strokes);
+    render(all, p.sky, allStrokes, whole, { pen: p.sky.suggestedPen });
+    root.appendChild(el("div", { "class": "row" }, [cell("original", a), cell("improved", b), cell("improved + all four traces (" + p.sky.suggestedPen + " pen)", all)]));
+
+    const portrait = p.sky.height > p.sky.width;
+    const aspect = portrait ? 2 / 3 : 3 / 2;
+    const cw = portrait ? 290 : 410, ch = Math.round(cw / aspect);
+    Object.keys(traces).forEach(function (k) {
+      const t = traces[k];
+      root.appendChild(el("h2", { text: t.label }));
+      const crop = cropFor(t.strokes, p.sky.width, p.sky.height, aspect, false);
+      const raw = canvas(cw, ch), line = canvas(cw, ch), glow = canvas(cw, ch);
+      render(raw, p.sky, [], crop, { rawSets: t.rawSets });
+      render(line, p.sky, t.strokes, crop, { pen: p.sky.suggestedPen });
+      const cells = [cell("raw as captured (" + t.rawSets.map(function (s) { return s.length; }).join("+") + " points)", raw), cell("smoothed, line only (" + t.strokes.map(function (s) { return s.kind + (s.closed ? "/closed" : "") + ":" + s.points.length; }).join(" ") + ")", line)];
+      if (LU.trace.hasClosed(t.strokes)) { render(glow, p.sky, t.strokes, crop, { glow: true, pen: p.sky.suggestedPen }); cells.push(cell("smoothed + glow", glow)); }
+      else cells.push(cell("glow: no closed shape (the toggle would be greyed out)", canvas(1, 1)));
+      root.appendChild(el("div", { "class": "row" }, cells));
+    });
+  }
+
+  // ---------- draw mode: trace with a real finger ----------
+  async function modeDraw(initial) {
+    root.appendChild(el("h1", { text: "Trace the sky" }));
+    const bar = el("div", { "class": "bar" });
+    const file = el("input", { type: "file", accept: "image/*" });
+    bar.appendChild(file);
+    root.appendChild(bar);
+    const stage = el("canvas", { id: "stage" });
+    const bar2 = el("div", { "class": "bar" });
+    const info = el("div", { "class": "meta", text: "Choose a photo, then draw on it." });
+    root.appendChild(stage); root.appendChild(bar2); root.appendChild(info);
+
+    let p = null, strokes = [], live = null, penId = "white", glowOn = false, penTouched = false, raf = 0, anim = null;
+    const pens = LU.PENS.map(function (pen) {
+      const b = el("button", { "class": "pen", "aria-label": pen.id + " pen" }, [el("i")]);
+      b.firstChild.style.background = pen.hex;
+      b.onclick = function () { penId = pen.id; penTouched = true; refreshBar(); redraw(); };
+      bar2.appendChild(b); return b;
+    });
+    const glowBtn = el("button", { "class": "btn", text: "Make it glow" });
+    const undoBtn = el("button", { "class": "btn", text: "Undo" });
+    const clearBtn = el("button", { "class": "btn", text: "Clear" });
+    const playBtn = el("button", { "class": "btn", text: "Replay" });
+    [glowBtn, undoBtn, clearBtn, playBtn].forEach(function (b) { bar2.appendChild(b); });
+    function refreshBar() {
+      pens.forEach(function (b, i) { b.classList.toggle("on", LU.PENS[i].id === penId); });
+      const closed = LU.trace.hasClosed(strokes);
+      glowBtn.classList.toggle("on", glowOn && closed);
+      glowBtn.style.opacity = closed ? 1 : 0.45;
+      glowBtn.textContent = closed ? "Make it glow" : "Close your shape to make it glow";
+      undoBtn.disabled = clearBtn.disabled = !strokes.length;
+    }
+
+    // canvas size: the photo fits the width
+    function layout() {
+      if (!p) return;
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
+      const cssW = Math.min(document.documentElement.clientWidth - 24, 900);
+      stage.style.width = cssW + "px";
+      stage.width = Math.round(cssW * dpr);
+      stage.height = Math.round(cssW * dpr * p.sky.height / p.sky.width);
+      stage.style.height = Math.round(cssW * p.sky.height / p.sky.width) + "px";
+    }
+    function redraw(progress) {
+      if (!p) return;
+      const ctx = stage.getContext("2d");
+      const scale = stage.width / p.sky.width;
+      ctx.drawImage(p.sky.image, 0, 0, stage.width, stage.height);
+      if (glowOn && LU.trace.hasClosed(strokes)) {
+        const g = LU.trace.makeGlow(stage, strokes, { scale: scale, feather: 30 * stage.width / 1080 });
+        if (g) LU.trace.applyGlow(ctx, g, 1);
+      }
+      LU.trace.drawStrokes(ctx, strokes, { pen: penId, scale: scale, short: stage.width, progress: progress == null ? 1 : progress });
+      if (live && live.length) LU.trace.drawLive(ctx, live, penId, scale, { short: stage.width });
+    }
+    async function use(file) {
+      try {
+        info.textContent = "Reading the photo...";
+        p = await prepareFile(file);
+        strokes = []; live = null;
+        if (!penTouched) penId = p.sky.suggestedPen;
+        layout(); refreshBar(); redraw();
+        info.textContent = file.name + ": " + p.sky.width + "x" + p.sky.height + ", tone " + p.sky.tone + ", suggested pen " + p.sky.suggestedPen + ", improved in " + ms(p.tPrepare) + (p.sky.warning ? ". Clouds are easier to see in daylight, but you can still draw." : "");
+      } catch (e) { info.textContent = (e && e.title ? e.title + " " + e.detail : String(e)); }
+    }
+    file.onchange = function () { if (file.files[0]) use(file.files[0]); };
+
+    function toSky(ev) {
+      const r = stage.getBoundingClientRect();
+      return { x: (ev.clientX - r.left) / r.width * p.sky.width, y: (ev.clientY - r.top) / r.height * p.sky.height, t: ev.timeStamp };
+    }
+    stage.addEventListener("pointerdown", function (ev) {
+      if (!p) return;
+      ev.preventDefault();
+      try { stage.setPointerCapture(ev.pointerId); } catch (e) { /* fine */ }
+      live = [toSky(ev)]; schedule();
+    });
+    stage.addEventListener("pointermove", function (ev) {
+      if (!live) return;
+      ev.preventDefault();
+      const evs = ev.getCoalescedEvents ? ev.getCoalescedEvents() : [ev];
+      (evs.length ? evs : [ev]).forEach(function (e) { live.push(toSky(e)); });
+      schedule();
+    });
+    function end(ev) {
+      if (!live) return;
+      const pts = live; live = null;
+      const t0 = performance.now();
+      const s = LU.trace.finish(p.sky, pts);
+      const dt = performance.now() - t0;
+      strokes.push(s); refreshBar(); redraw();
+      info.textContent = s.kind + (s.closed ? " (closed shape)" : "") + ", " + pts.length + " points in, " + s.points.length + " out, smoothed in " + ms(dt);
+    }
+    stage.addEventListener("pointerup", end);
+    stage.addEventListener("pointercancel", end);
+    stage.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+    function schedule() { if (!raf) raf = requestAnimationFrame(function () { raf = 0; redraw(); }); }
+
+    glowBtn.onclick = function () { if (!LU.trace.hasClosed(strokes)) return; glowOn = !glowOn; refreshBar(); redraw(); };
+    undoBtn.onclick = function () { strokes.pop(); refreshBar(); redraw(); };
+    clearBtn.onclick = function () { strokes = []; refreshBar(); redraw(); };
+    playBtn.onclick = function () {
+      const t0 = performance.now(), dur = 1800;
+      (function step() {
+        const k = (performance.now() - t0) / dur;
+        redraw(Math.min(1, k));
+        if (k < 1) requestAnimationFrame(step);
+      })();
+    };
+    window.addEventListener("resize", function () { layout(); redraw(); });
+    refreshBar();
+    if (initial) await use(initial);
+    document.body.setAttribute("data-ready", "1");
+  }
+
+  // ---------- go ----------
+  (async function main() {
+    try {
+      if (Q.get("draw") === "1") {
+        let f = null;
+        try { f = await loadPhoto(photoParam || "../assets/sample-sky.jpg"); } catch (e) { /* the file input still works */ }
+        return await modeDraw(f);
+      }
+      if (!photoParam) {
+        root.appendChild(el("h1", { text: "Look Up: the line" }));
+        root.appendChild(el("div", { "class": "meta", html: "Add <code>?photo=real/01-blue-rooftops.jpg</code> (or <code>?photo=../assets/sample-sky.jpg</code>), or <code>?draw=1</code> to trace with your finger." }));
+        return;
+      }
+      const status = el("div", { "class": "meta", text: "loading photo..." });
+      root.appendChild(status);
+      const file = { url: photoParam, size: 0 };
+      status.textContent = "decoding...";
+      const p = await prepareFile(file);
+      status.remove();
+      if (only === "sky") await modeSky(p);
+      else if (only) await modeOne(p, only);
+      else await modeOverview(p);
+      document.body.setAttribute("data-ready", "1");
+    } catch (e) {
+      fail((e && e.title ? e.title + " " + e.detail : (e && e.stack) || String(e)));
+    }
+  })();
+})();
+</script>
+</body>
+</html>

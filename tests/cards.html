@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Look Up: the cards (M2 test page)</title>
+<!--
+  Never deployed. Engine-builder's M2 test page: every look x {square, story}, drawn by the very card.drawFrame the site uses.
+
+  tests/cards.html                                    all five looks, square + story, at t = END, on the sample sky with its preset trace
+  ...?look=postcard|polaroid|film|letter|plain        one look
+  ...&format=square|story|both                        (default both)
+  ...&t=0.3,1.5,2.8,3.4                               several moments side by side (default 5 = END)
+  ...&size=1080                                       the square's width in px (the story is drawn at 0.6 of that scale, or at the same scale with format=story); default 440
+  ...&flat=1                                          every cell in one row, no headings
+  ...&photo=real/04-sunset-pole.jpg                   a real photo with simulated messy finger traces (whale loop + two taps)
+  ...&sim=0.5,0.55,0.62,7                             where the simulated drawing goes: centre x, y (fractions of the photo), size (of the short side), seed
+  ...&zoom=620,160,440,300&zw=880                     (one look, one format, t=END) a close-up of that card-space rectangle, shown zw px wide
+  ...&check=1                                         logs, per look and format, the crop, where the drawing lands on the card and (Postcard) the stamp corner
+  ...&said=...&city=...&to=...&pen=white|gold|ink&glow=1&when=<ms>
+  ...&export=1                                        also runs LU.export.makeImage and reports size and time
+  ...&video=1                                         also runs LU.export.makeVideo once and reports file, size and time
+  body[data-ready] is set when everything has drawn.
+-->
+<style>
+  @font-face { font-family: "Caveat"; src: url("../fonts/caveat-600.woff2") format("woff2"); font-weight: 600; }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{font:13px/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;background:#d9d4ca;color:#2b2b2b;padding:10px}
+  h2{font:600 15px Georgia,serif;margin:14px 0 4px}
+  .row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-start}
+  .cell{display:flex;flex-direction:column;gap:3px}
+  .cell span{font-size:11.5px;color:#555}
+  canvas{display:block;background:#888}
+  .meta{font-size:12px;color:#444;margin:2px 0}
+  .err{background:#fde8e8;border:1px solid #d99;padding:8px 10px;border-radius:6px;color:#822}
+  pre{margin:4px 0;font:12px/1.4 Consolas,monospace;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="../src/engine/util.js"></script>
+<script src="../src/engine/decode.js"></script>
+<script src="../src/engine/sky.js"></script>
+<script src="../src/engine/trace.js"></script>
+<script src="../src/engine/moon.js"></script>
+<script src="../src/engine/words.js"></script>
+<script src="../src/engine/finishes.js"></script>
+<script src="../src/engine/card.js"></script>
+<script src="../src/engine/sample.js"></script>
+<script src="../src/engine/export.js"></script>
+<script src="../src/engine/share.js"></script>
+<script src="engine/simulate.js"></script>
+<script>
+(function () {
+  "use strict";
+  const LU = window.LU, SIM = window.LUTEST.simulate;
+  const Q = new URLSearchParams(location.search);
+  const root = document.getElementById("root");
+  function el(tag, attrs, kids) {
+    const e = document.createElement(tag);
+    if (attrs) for (const k in attrs) { if (k === "text") e.textContent = attrs[k]; else e.setAttribute(k, attrs[k]); }
+    (kids || []).forEach(function (c) { e.appendChild(c); });
+    return e;
+  }
+  function log(text) { root.appendChild(el("pre", { text: text })); }
+  function fail(e) { root.appendChild(el("div", { "class": "err", text: (e && e.title ? e.title + " " + e.detail : (e && e.stack) || String(e)) })); document.body.setAttribute("data-ready", "error"); }
+
+  async function photoToSky(url) {
+    const img = new Image(); img.src = url;
+    await new Promise(function (ok, bad) { img.onload = ok; img.onerror = function () { bad(new Error("could not load " + url)); }; });
+    const k = Math.min(1, 2000 / Math.max(img.naturalWidth, img.naturalHeight));
+    const w = Math.round(img.naturalWidth * k), h = Math.round(img.naturalHeight * k);
+    const c = document.createElement("canvas"); c.width = w; c.height = h;
+    const g = c.getContext("2d", { willReadFrequently: true });
+    g.imageSmoothingQuality = "high"; g.drawImage(img, 0, 0, w, h);
+    return LU.sky.prepare(g.getImageData(0, 0, w, h));
+  }
+
+  function simStrokes(sky) {
+    const W = sky.width, H = sky.height;
+    const sp = (Q.get("sim") || "").split(",").map(parseFloat);
+    const seed = sp[3] || 7;
+    const size = sp.length >= 3 && isFinite(sp[2]) ? sp[2] * Math.min(W, H) : Math.min(0.62 * W, 1.05 * H);
+    const box = sp.length >= 3 && isFinite(sp[0]) ? { cx: W * sp[0], cy: H * sp[1], size: size } : { cx: W / 2, cy: H * 0.5 + 0.1 * size, size: size };
+    const base = { seed: seed, photoWidth: W, jitter: 3 };
+    const whale = SIM.whale(box, base);
+    const eyes = SIM.taps({ cx: box.cx - 0.5 * size * 0.55, cy: box.cy - 0.5 * size * 0.15, size: 0.3 * size }, Object.assign({}, base, { seed: 10 }));
+    const strokes = [LU.trace.finish(sky, whale.points)];
+    strokes.push(LU.trace.finish(sky, eyes[0].points));
+    return strokes;
+  }
+
+  function frameCanvas(cd, t, format, s) {
+    const H = format === "story" ? 1920 : 1080;
+    const c = document.createElement("canvas");
+    c.width = Math.round(1080 * s); c.height = Math.round(H * s);
+    const ctx = c.getContext("2d");
+    cd.drawFrame(ctx, t, format, s);
+    return c;
+  }
+
+  (async function main() {
+    try {
+      let sky, strokes, settings;
+      const photo = Q.get("photo");
+      if (photo) {
+        sky = await photoToSky(photo);
+        strokes = simStrokes(sky);
+        settings = { said: "I saw a whale.", city: "Philadelphia", to: "Maya" };
+      } else {
+        const sm = await LU.sample.load();
+        sky = sm.sky; strokes = sm.strokes; settings = sm.settings;
+        if (Q.get("to") === null && Q.get("noto") !== "1") settings.to = "Maya";
+      }
+      if (Q.get("strokes") === "0") strokes = []; // no drawing: the centred photo
+      ["said", "city", "to", "pen"].forEach(function (k) { if (Q.get(k) !== null) settings[k] = Q.get(k); });
+      if (Q.get("glow") === "1") settings.glow = true;
+      if (Q.get("when")) settings.when = parseInt(Q.get("when"), 10);
+      else settings.when = new Date(2026, 9, 6, 19, 42).getTime(); // a fixed moment (local time) so screenshots are comparable: Tue 6 Oct, 7:42 pm
+      if (Q.get("editor") === "1") { // the trace view: the improved sky, finished strokes, and a live line (pen id, points in sky px)
+        const c = document.createElement("canvas"); c.width = 780; c.height = 640; // deliberately not the photo's shape
+        const live = [];
+        for (let i = 0; i < 30; i++) live.push({ x: 300 + i * 28, y: 700 + Math.sin(i / 3) * 40, t: i * 16 });
+        LU.card.drawEditor(c, sky, strokes.slice(0, 2), live, Q.get("pen") || "white");
+        root.appendChild(el("div", { "class": "cell" }, [c, el("span", { text: "drawEditor: 780x640 canvas, photo " + sky.width + "x" + sky.height + " fitted, 2 strokes + a live line" })]));
+        document.body.setAttribute("data-ready", "1");
+        return;
+      }
+      if (Q.get("preview") === "1") { // LU.card.startPreview on a CSS-sized canvas; the look changes 7.2 s in, during the pause between loops
+        const pc = document.createElement("canvas"); pc.style.width = "320px"; pc.style.height = "320px";
+        root.appendChild(el("div", { "class": "cell" }, [pc, el("span", { text: "startPreview, 320 css px, dpr " + window.devicePixelRatio })]));
+        const pcard = await LU.card.create(sky, strokes, settings);
+        LU.card.startPreview(pc, pcard, "square");
+        const second = LU.card.startPreview(pc, pcard, "square"); // twice on one canvas must be safe
+        setTimeout(function () { pcard.update({ finish: "polaroid", said: "changed in the pause" }); }, 7200);
+        setTimeout(function () { log("canvas pixel size " + pc.width + "x" + pc.height); document.body.setAttribute("data-ready", "1"); }, 8000);
+        return;
+      }
+      const cd = await LU.card.create(sky, strokes, settings);
+      const wanted = Q.get("look");
+      const looks = wanted ? LU.FINISHES.filter(function (f) { return f.id === wanted; }) : LU.FINISHES;
+      const fm = Q.get("format") || "both";
+      const formats = fm === "both" ? ["square", "story"] : [fm];
+      const ts = (Q.get("t") || String(LU.END)).split(",").map(parseFloat);
+      const sq = parseFloat(Q.get("size") || "440") / 1080;
+      const stScale = fm === "story" ? sq : sq * 0.6;
+
+      log("sky " + sky.width + "x" + sky.height + " tone " + sky.tone + ", " + strokes.length + " strokes, settings " + JSON.stringify(settings));
+      const flat = Q.get("flat") === "1"; // all cells in one row, no headings
+      const flatRow = el("div", { "class": "row" });
+      if (flat) root.appendChild(flatRow);
+      const t0 = performance.now();
+      let frames = 0;
+      for (const look of looks) {
+        await cd.update({ finish: look.id });
+        if (!flat) root.appendChild(el("h2", { text: look.name + " (" + look.id + ")" }));
+        const row = flat ? flatRow : el("div", { "class": "row" });
+        for (const f of formats) {
+          for (const t of ts) {
+            const s = f === "story" ? stScale : sq;
+            let c = frameCanvas(cd, t, f, Q.get("zoom") ? 1 : s); frames++;
+            if (Q.get("zoom")) { // a close-up of one card-space rectangle
+              const z = Q.get("zoom").split(",").map(parseFloat), zw = parseFloat(Q.get("zw") || "880"), zc = document.createElement("canvas");
+              zc.width = Math.round(zw); zc.height = Math.round(zw * z[3] / z[2]);
+              const zx = zc.getContext("2d"); zx.imageSmoothingQuality = "high"; zx.drawImage(c, z[0], z[1], z[2], z[3], 0, 0, zc.width, zc.height);
+              c = zc;
+            }
+            row.appendChild(el("div", { "class": "cell" }, [c, el("span", { text: look.id + " " + f + " t=" + t + " (" + c.width + "x" + c.height + ")" })]));
+            if (Q.get("check") === "1") {
+              const e = cd._env(f, 1), b = LU.trace.boundsOf(strokes), k = e.lay.w / e.crop.w;
+              let line = look.id + " " + f + ": crop " + [e.crop.x, e.crop.y, e.crop.w, e.crop.h].map(Math.round).join(",") + (e.crop.fill ? " FILL" : "") + " k=" + k.toFixed(3);
+              if (b) line += "; drawing on the card x " + Math.round(e.lay.x + k * (b.x0 - e.crop.x)) + ".." + Math.round(e.lay.x + k * (b.x1 - e.crop.x)) + " y " + Math.round(e.lay.y + k * (b.y0 - e.crop.y)) + ".." + Math.round(e.lay.y + k * (b.y1 - e.crop.y));
+              if (e.arr) line += "; stamp corner " + e.arr.corner + " size " + e.arr.s + " overlap " + e.arr.overlap + (e.pmS && e.pmS.dark ? " (light ink)" : "");
+              log(line);
+            }
+          }
+        }
+        if (!flat) root.appendChild(row);
+      }
+      log("drew " + frames + " frames incl. cache builds in " + Math.round(performance.now() - t0) + " ms");
+
+      // frame cost once everything is cached
+      await cd.update({ finish: "postcard" });
+      const cc = document.createElement("canvas"); cc.width = 1080; cc.height = 1080;
+      const cx = cc.getContext("2d");
+      const tb0 = performance.now(); cd.drawFrame(cx, 5, "square", 1); const tFirst = performance.now() - tb0;
+      const tr0 = performance.now(); for (let i = 0; i < 10; i++) cd.drawFrame(cx, 1.0 + i * 0.35, "square", 1); const tAvg = (performance.now() - tr0) / 10;
+      log("postcard square at scale 1: first frame (builds caches) " + tFirst.toFixed(0) + " ms, then " + tAvg.toFixed(1) + " ms per frame");
+
+      // where the time goes, for the story at full size (the video draws 150 of these)
+      if (Q.get("timing") === "1" || Q.get("video") === "1") {
+        for (const id of ["postcard", "film"]) {
+          await cd.update({ finish: id });
+          const sc = document.createElement("canvas"); sc.width = 1080; sc.height = 1920;
+          const sx = sc.getContext("2d", { alpha: false });
+          cd.drawFrame(sx, 5, "story", 1);
+          const out = [];
+          [0.3, 1.5, 2.8, 3.4, 4.5].forEach(function (t) {
+            const a = performance.now(); for (let i = 0; i < 24; i++) cd.drawFrame(sx, t + i * 0.001, "story", 1);
+            out.push("t=" + t + ": " + ((performance.now() - a) / 24).toFixed(1) + " ms");
+          });
+          log(id + " story frame cost at scale 1 (cached): " + out.join(", "));
+        }
+        await cd.update({ finish: wanted || "postcard" });
+      }
+      if (Q.get("export") === "1") {
+        const t1 = performance.now();
+        const file = await LU.export.makeImage(cd);
+        const url = URL.createObjectURL(file);
+        const im = new Image(); im.src = url;
+        await new Promise(function (ok, bad) { im.onload = ok; im.onerror = bad; });
+        log("makeImage: " + file.name + " " + file.type + " " + im.naturalWidth + "x" + im.naturalHeight + " " + Math.round(file.size / 1024) + " KB in " + Math.round(performance.now() - t1) + " ms");
+        document.body.setAttribute("data-export", im.naturalWidth + "x" + im.naturalHeight);
+      }
+      if (Q.get("video") === "1") {
+        const sup = await LU.export.support();
+        log("export.support: " + JSON.stringify(sup));
+        const t2 = performance.now();
+        let last = 0;
+        const file = await LU.export.makeVideo(cd, { onProgress: function (p) { last = p; } });
+        const ms = performance.now() - t2;
+        let info = "";
+        try {
+          const v = document.createElement("video"); v.preload = "metadata"; v.muted = true;
+          v.src = URL.createObjectURL(file);
+          await new Promise(function (ok) { v.onloadedmetadata = ok; v.onerror = ok; setTimeout(ok, 2000); });
+          info = " duration " + (v.duration ? v.duration.toFixed(2) + " s" : "?") + " " + v.videoWidth + "x" + v.videoHeight;
+        } catch (e) { /* fine */ }
+        log("makeVideo: " + file.name + " " + file.type + " " + (file.size / 1024).toFixed(0) + " KB in " + Math.round(ms) + " ms" + info);
+        document.body.setAttribute("data-video", file.size + "");
+      }
+      document.body.setAttribute("data-ready", "1");
+    } catch (e) { fail(e); }
+  })();
+})();
+</script>
+</body>
+</html>

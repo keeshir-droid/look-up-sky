@@ -1,0 +1,14 @@
+# Personal test material: never commit
+tests/real/
+tests/out/
+shots/
+shots/.keep
+
+# Tooling and OS junk
+node_modules/
+__pycache__/
+.DS_Store
+Thumbs.db
+.vercel
+
+tests/engine/out/
