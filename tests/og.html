@@ -1,14 +1,13 @@
 <!doctype html>
-<!-- Never deployed. Draws the share picture (assets/og-v2.jpg) and the README picture (docs/preview-postcard.png) with the real engine.
+<!-- Never deployed. Draws the share picture (assets/og-v3.jpg) and the README picture (docs/preview-postcard.png) with the real engine.
      tests/make-assets.js opens it over http and captures it.  ?mode=og (default) | postcard | film -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <title>Look Up: share picture</title>
 <style>
-  @font-face { font-family: "Fraunces"; src: url("../fonts/fraunces-700.woff2") format("woff2"); font-weight: 700; font-style: normal; }
-  @font-face { font-family: "Fraunces"; src: url("../fonts/fraunces-600-italic.woff2") format("woff2"); font-weight: 600; font-style: italic; }
-  :root { --ink: #1d2b53; --serif: "Fraunces", Georgia, "Times New Roman", serif; }
+  @font-face { font-family: "Figtree"; src: url("../fonts/figtree-var.woff2") format("woff2"); font-weight: 400 800; font-style: normal; }
+  :root { --ink: #1d2b53; --sans: "Figtree", "Helvetica Neue", Helvetica, Arial, sans-serif; }
   html, body { margin: 0; padding: 0; background: #ffd9c0; }
   /* the golden-hour sky: morning blue through blush to peach, a sun glow top right, a few soft clouds */
   #og { position: relative; width: 1200px; height: 630px; overflow: hidden; display: none;
@@ -19,8 +18,8 @@
           radial-gradient(ellipse 360px 360px at 1120px 40px, rgba(255,236,218,.6), rgba(255,236,218,0) 100%),
           linear-gradient(180deg, #9cc7f2 0%, #ffc4d4 56%, #ffd9c0 100%); }
   #og .copy { position: absolute; left: 80px; top: 0; bottom: 0; width: 560px; display: flex; flex-direction: column; justify-content: center; }
-  #og h1 { font-family: var(--serif); font-weight: 700; font-size: 64px; line-height: 1.08; color: var(--ink); margin: 0; letter-spacing: -.012em; }
-  #og .url { font-family: var(--serif); font-style: italic; font-weight: 600; font-size: 30px; color: var(--ink); opacity: .8; margin: 28px 0 0; }
+  #og h1 { font-family: var(--sans); font-weight: 800; font-size: 62px; line-height: 1.08; color: var(--ink); margin: 0; letter-spacing: -.015em; }
+  #og .url { font-family: var(--sans); font-weight: 600; font-size: 30px; color: var(--ink); opacity: .8; margin: 28px 0 0; }
   #og .cardwrap { position: absolute; right: 64px; top: 50%; width: 490px; height: 490px; margin-top: -245px; transform: rotate(2.5deg);
                   border-radius: 24px; box-shadow: 0 20px 44px rgba(58, 46, 128, .28), 0 3px 8px rgba(58, 46, 128, .16); overflow: hidden; }
   #og canvas, #solo canvas { display: block; width: 100%; height: 100%; }
@@ -49,11 +48,11 @@
 (async function () {
   var mode = new URLSearchParams(location.search).get("mode") || "og";
   try {
-    await document.fonts.load('700 40px "Fraunces"');
-    await document.fonts.load('italic 600 40px "Fraunces"');
+    await document.fonts.load('800 40px "Figtree"');
+    await document.fonts.load('600 40px "Figtree"');
     var s = await LU.sample.load();
     var settings = Object.assign({}, s.settings, { finish: mode === "film" ? "film" : "postcard" });
-    var card = await LU.card.create(s.sky, s.strokes, settings); // waits for Gochi Hand and Fraunces
+    var card = await LU.card.create(s.sky, s.strokes, settings); // waits for Gochi Hand and Figtree
     var cv = document.getElementById(mode === "og" ? "ogCanvas" : "soloCanvas");
     var size = parseInt(new URLSearchParams(location.search).get("size") || "0", 10);
     if (mode !== "og" && size) { cv.width = size; cv.height = size; }

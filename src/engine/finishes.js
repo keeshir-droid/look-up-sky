@@ -18,7 +18,7 @@
 //   look.background(ctx, format, env)  static, card space: the golden-hour sky behind Postcard, Polaroid and Letter (env.seed,
 //                                     env.sky.tone choose its colours and clouds); look.drift (px of padding) = the card
 //                                     moves it a hair, whole pixels, over the video
-//   LU.finishes.loadFonts(capMs?)  -> Promise    registers Gochi Hand 400 + Fraunces italic 600 (FontFace API), never rejects
+//   LU.finishes.loadFonts(capMs?)  -> Promise    registers Gochi Hand 400 + Figtree 400-700 (FontFace API), never rejects
 //   look.base(ctx, format, env)    static, piece space (paper, shadow, frame; no sky)
 //   look.grade(ctx, w, h, format)  optional, baked into the sky picture (film fade, grain)
 //   look.over(ctx, format, env)    static, piece space, drawn above the sky and the pen (stamp, tape, shading)
@@ -35,10 +35,11 @@
   const LU = (globalThis.LU = globalThis.LU || {});
   const U = function () { return LU.util; };
 
-  // Gochi Hand (handwriting, 400) and Fraunces (italic 600, the small serif lines). Both are loaded by LU.finishes.loadFonts
-  // (called by card.create); the stacks below are what shows if a font is missing.
+  // Gochi Hand (handwriting, 400) and Figtree (upright, variable weight, 600 for the date lines and the mark). Both are loaded by
+  // LU.finishes.loadFonts (called by card.create); the stacks below are what shows if a font is missing. Figtree has no italic:
+  // nothing here ever asks for one.
   const HAND = '"Gochi Hand","Segoe Print","Bradley Hand","Comic Sans MS",cursive';
-  const SERIF = '"Fraunces",Georgia,"Times New Roman",serif';
+  const FIGTREE = '"Figtree","Helvetica Neue",Helvetica,Arial,sans-serif';
   const SANS = '"Helvetica Neue",Helvetica,Arial,sans-serif';
   const SITE = "look-up-sky.vercel.app";
   const INK = "#2a3a78";       // handwriting ink (a touch bluer than the old navy)
@@ -52,7 +53,7 @@
   // and does not depend on the page's CSS. Resolves when both are ready or after capMs (never rejects).
   const FONT_FILES = [
     { family: "Gochi Hand", file: "gochi-hand-400.woff2", weight: "400", style: "normal", spec: '400 40px "Gochi Hand"' },
-    { family: "Fraunces", file: "fraunces-600-italic.woff2", weight: "600", style: "italic", spec: 'italic 600 40px "Fraunces"' }
+    { family: "Figtree", file: "figtree-var.woff2", weight: "400 700", style: "normal", spec: '600 40px "Figtree"' }
   ];
   let fontsPromise = null;
   function fontBase() { // ../../fonts/ relative to this script (src/engine/finishes.js), else fonts/ next to the page
@@ -285,7 +286,7 @@
     ctx.save();
     ctx.globalAlpha *= alpha === undefined ? 0.66 : alpha;
     ctx.fillStyle = color;
-    ctx.font = "italic 600 " + size + "px " + SERIF;
+    ctx.font = "600 " + size + "px " + FIGTREE;
     ctx.textAlign = "right"; ctx.textBaseline = "alphabetic";
     if (shadow) { ctx.shadowColor = shadow; ctx.shadowBlur = 5; ctx.shadowOffsetY = 1; }
     ctx.fillText("made with " + SITE, x, y);
@@ -824,7 +825,7 @@
         const said = saidOr(env, "Look up."), to = toOf(env);
         const blocks = [];
         const baseRow = sy + g.strip - 30;
-        const dateB = block(env, { kind: "fade", text: env.info.line, family: SERIF, style: "italic", weight: 600, size: story ? 25 : 23,
+        const dateB = block(env, { kind: "fade", text: env.info.line, family: FIGTREE, weight: 600, size: story ? 24 : 22,
           maxW: win.w * 0.52, maxLines: 1, minRatio: 0.7, align: "right", x: x1, y: baseRow, color: "#5f5a78", moonColor: "#34315a", moon: true });
         const toB = to ? block(env, { text: to, family: HAND, weight: 400, cap: HAND_CAP, size: story ? 42 : 38, maxW: Math.max(120, (dateB ? dateB.x0 : x1) - x0 - 20),
           maxLines: 1, minRatio: 0.6, x: x0, y: baseRow, color: "#4a5a9e" }) : null;
@@ -891,9 +892,9 @@
         const said = saidOr(env, "Look up."), to = toOf(env);
         const blocks = [];
         const rightW = p.w * 0.4;
-        const cityB = block(env, { kind: "fade", text: cityOf(env), family: SERIF, style: "italic", weight: 600, size: story ? 25 : 23, maxW: rightW, maxLines: 1,
+        const cityB = block(env, { kind: "fade", text: cityOf(env), family: FIGTREE, weight: 600, size: story ? 24 : 22, maxW: rightW, maxLines: 1,
           minRatio: 0.6, align: "right", x: x1, y: y0 + g.strip * 0.43, color: "#524e72" });
-        const dateB = block(env, { kind: "fade", text: env.info.line, family: SERIF, style: "italic", weight: 600, size: story ? 22 : 20, maxW: rightW, maxLines: 1,
+        const dateB = block(env, { kind: "fade", text: env.info.line, family: FIGTREE, weight: 600, size: story ? 21 : 19, maxW: rightW, maxLines: 1,
           minRatio: 0.6, align: "right", x: x1, y: y0 + g.strip * 0.43 + 30, color: "#6c6888", moonColor: "#34315a", moon: true });
         const rx0 = Math.min(cityB ? cityB.x0 : x1, dateB ? dateB.x0 : x1);
         const leftW = Math.max(160, rx0 - x0 - 24);
@@ -1003,7 +1004,7 @@
         // the details line is never smaller than 24 px (story) / 20 px (square): it wraps to two lines first
         // (two lines are set at 85% of the size, so the sizes below give 24.6 and 20.4 px)
         const dSize = story ? 29 : 24;
-        const dateB = block(env, { kind: "fade", text: partsB, family: SERIF, style: "italic", weight: 600, size: dSize, maxW: detailW, maxLines: 2,
+        const dateB = block(env, { kind: "fade", text: partsB, family: FIGTREE, weight: 600, size: dSize, maxW: detailW, maxLines: 2,
           minRatio: (story ? 24 : 20) / dSize, lineRatio: 1.15, x: x0, y: yB, color: CREAM, moon: true, shadow: sh });
         let lift = 0;
         if (story && dateB && dateB.lines.length > 1) { // two detail lines would reach the made-with mark: everything moves up a line
@@ -1087,20 +1088,30 @@
         const g = geo(env.format), story = env.format === "story", s = g.sheet;
         const x0 = s.x + 54, maxW = s.w - 54 - 40;
         const said = saidOr(env, "Look up."), to = (env.settings.to || "").trim();
-        const blocks = [];
-        let r = 0;
-        if (to) {
-          const b = block(env, { text: "Dear " + to + ",", family: HAND, weight: 400, cap: HAND_CAP, size: story ? 52 : 50, maxW: maxW, maxLines: 1, minRatio: 0.6, x: x0, y: g.r0 + r * g.pitch, color: INK });
-          if (b) blocks.push(b);
-          r += 2;
-        } else r += 1;
-        if (said) {
-          const b = block(env, { text: said, family: HAND, weight: 400, cap: HAND_CAP, size: story ? 64 : 62, maxW: maxW, lineH: g.pitch, x: x0, y: g.r0 + r * g.pitch, color: "#22307a" });
-          if (b) { blocks.push(b); r += b.lines.length + 1; }
-        } else r += 1;
+        // The ruled rows: "Dear" (row 0), a blank row, the words, a blank row, the sky line. The last baseline must stay above the
+        // made-with mark (66 px above the sheet's bottom edge), so when a long text pushes it down the blank rows are dropped, first
+        // the one before the sky line, then the one after "Dear".
+        const lastY = s.y + s.h - 66;
+        function build(gapDear, gapSky) {
+          const out = [];
+          let r = 0;
+          if (to) {
+            const b = block(env, { text: "Dear " + to + ",", family: HAND, weight: 400, cap: HAND_CAP, size: story ? 52 : 50, maxW: maxW, maxLines: 1, minRatio: 0.6, x: x0, y: g.r0 + r * g.pitch, color: INK });
+            if (b) out.push(b);
+            r += 1 + gapDear;
+          } else r += 1;
+          if (said) {
+            const b = block(env, { text: said, family: HAND, weight: 400, cap: HAND_CAP, size: story ? 64 : 62, maxW: maxW, lineH: g.pitch, x: x0, y: g.r0 + r * g.pitch, color: "#22307a" });
+            if (b) { out.push(b); r += b.lines.length + gapSky; }
+          } else r += 1;
+          return { blocks: out, r: r };
+        }
+        let lay = null;
+        [[1, 1], [1, 0], [0, 0]].some(function (a) { lay = build(a[0], a[1]); return g.r0 + lay.r * g.pitch <= lastY + 1; });
+        const blocks = lay.blocks, r = lay.r;
         const city = (env.settings.city || "").trim();
         const sky = (city ? "the sky over " + city : "the sky today") + ", " + env.info.line;
-        const yS = g.r0 + r * g.pitch, limit = s.y + s.h - 64;           // the last line must stay on the sheet
+        const yS = g.r0 + r * g.pitch, limit = lastY;           // the last line must stay on the sheet
         const rows = Math.max(1, Math.min(2, Math.floor((limit - yS) / g.pitch) + 1));
         const b = block(env, { kind: "fade", text: sky, family: HAND, weight: 400, cap: HAND_CAP, size: story ? 36 : 34, maxW: maxW, maxLines: rows, lineH: g.pitch, x: x0, y: yS, color: "#4a5a9e", moonColor: "#2c3a78", moon: true });
         if (b) blocks.push(b);
@@ -1140,14 +1151,14 @@
         const sh = { color: "rgba(0,0,0,.5)", blur: 8, dx: 0, dy: 1 };
         const said = saidOf(env), to = toOf(env);
         const blocks = [];
-        const saidB = said ? block(env, { text: said, family: SERIF, style: "italic", weight: 600, size: story ? 52 : 46, maxW: x1 - x0, maxH: story ? 120 : 100, x: x0, y: yA, color: "#ffffff", shadow: sh }) : null;
+        const saidB = said ? block(env, { text: said, family: FIGTREE, weight: 700, size: story ? 50 : 44, maxW: x1 - x0, maxH: story ? 120 : 100, x: x0, y: yA, color: "#ffffff", shadow: sh }) : null;
         if (saidB && saidB.lines.length > 1) {
           const up = (saidB.lines.length - 1) * saidB.size * 1.1;
           saidB.lines.forEach(function (l) { l.y -= up; });
           saidB.top -= up; saidB.bottom -= up;
         }
         const line = [to, cityOf(env) + " · " + env.info.time].filter(Boolean).join(" · ");
-        const dateB = block(env, { kind: "fade", text: line, family: SERIF, style: "italic", weight: 600, size: story ? 27 : 24, maxW: x1 - x0 - (story ? 0 : 0), maxLines: 1, minRatio: 0.6,
+        const dateB = block(env, { kind: "fade", text: line, family: FIGTREE, weight: 600, size: story ? 26 : 23, maxW: x1 - x0 - (story ? 0 : 0), maxLines: 1, minRatio: 0.6,
           x: x0, y: yB, color: "rgba(255,255,255,.92)", moon: true, shadow: sh });
         [saidB, dateB].forEach(function (b) { if (b) blocks.push(b); });
         return { blocks: blocks };
@@ -1164,6 +1175,6 @@
 
   LU.finishes = {
     get: get, box: box, cropFor: cropFor, plan: plan, layerRect: layerRect, ZOOM: ZOOM, drawBlocks: drawBlocks, block: block, mark: mark,
-    loadFonts: loadFonts, HAND: HAND, SERIF: SERIF, SANS: SANS, POSTMARK: POSTMARK, SITE: SITE, _rr: rr
+    loadFonts: loadFonts, HAND: HAND, FIGTREE: FIGTREE, SANS: SANS, POSTMARK: POSTMARK, SITE: SITE, _rr: rr
   };
 })();

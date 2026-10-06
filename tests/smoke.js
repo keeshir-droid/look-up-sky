@@ -170,13 +170,14 @@ try {
   report(["ios", "android", "desktop"].indexOf(p) >= 0, "share.platform() returns ios / android / desktop", p);
 } catch (e) { report(false, "share.platform() runs in Node", e.message); }
 
-// the fonts the engine asks for (Gochi Hand 400 and Fraunces italic 600, registered by LU.finishes.loadFonts via the FontFace API)
+// the fonts the engine asks for (Gochi Hand 400 and Figtree 400-700, upright only, registered by LU.finishes.loadFonts via the FontFace API)
 // are real files with their licences
 const engineText = ["card", "finishes"].map(function (n) { return fs.readFileSync(path.join(ROOT, "src", "engine", n + ".js"), "utf8"); }).join("\n");
 report(/"Gochi Hand"/.test(engineText) && /gochi-hand-400\.woff2/.test(engineText), "the engine asks for the font family \"Gochi Hand\" (gochi-hand-400.woff2)");
-report(/"Fraunces"/.test(engineText) && /fraunces-600-italic\.woff2/.test(engineText), "the engine asks for the font family \"Fraunces\" (fraunces-600-italic.woff2)");
-report(!/Caveat/.test(engineText), "the engine no longer mentions Caveat");
-report(["gochi-hand-400.woff2", "fraunces-600-italic.woff2", "OFL-gochihand.txt", "OFL-fraunces.txt"].every(function (f) { return fs.existsSync(path.join(ROOT, "fonts", f)); }), "fonts/ has Gochi Hand and Fraunces with their OFL texts");
+report(/"Figtree"/.test(engineText) && /figtree-var\.woff2/.test(engineText), "the engine asks for the font family \"Figtree\" (figtree-var.woff2)");
+report(!/italic/i.test(engineText.replace(/\/\/[^\n]*/g, "")), "the engine never asks for an italic (Figtree has none)");
+report(!/Caveat|Fraun/i.test(engineText), "the engine mentions neither Caveat nor the old serif");
+report(["gochi-hand-400.woff2", "figtree-var.woff2", "OFL-gochihand.txt", "OFL-figtree.txt"].every(function (f) { return fs.existsSync(path.join(ROOT, "fonts", f)); }), "fonts/ has Gochi Hand and Figtree with their OFL texts");
 report(typeof LU.finishes.loadFonts === "function", "LU.finishes.loadFonts exists");
 
 // the sample picture exists and is light

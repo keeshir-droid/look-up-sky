@@ -47,7 +47,7 @@ Everything is drawn in code with plain HTML, CSS and JavaScript: no framework, n
 ## Credits
 
 - **Sample sky:** "Dolphin Cloud" by Domenico Salvagnin, via [Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Dolphin_Cloud_(137567114).jpg), licensed [CC BY 2.0](https://creativecommons.org/licenses/by/2.0/). The photo is used unedited as the built-in sample.
-- **Fonts**, all SIL Open Font License 1.1 and self-hosted (licence texts in [`fonts/`](fonts/)): [Fraunces](https://github.com/undercasetype/Fraunces) for headings, [Figtree](https://github.com/erikdkennedy/figtree) for the interface, [Gochi Hand](https://fonts.google.com/specimen/Gochi+Hand) for the handwriting on the cards.
+- **Fonts**, all SIL Open Font License 1.1 and self-hosted (licence texts in [`fonts/`](fonts/)): [Figtree](https://github.com/erikdkennedy/figtree) for headings and the interface, [Gochi Hand](https://fonts.google.com/specimen/Gochi+Hand) for the handwriting on the cards.
 - **mp4-muxer** (MIT): [`src/engine/vendor/LICENSE-mp4-muxer.txt`](src/engine/vendor/LICENSE-mp4-muxer.txt).
 
 ## Links

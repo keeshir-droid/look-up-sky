@@ -1,6 +1,6 @@
 // The card (PLAN.md 6.4, 7.3) and the editor view.
 //
-//   LU.card.create(sky, strokes, settings) -> Promise<Card>     resolves once Gochi Hand and Fraunces are ready (never hangs, 2.5 s cap)
+//   LU.card.create(sky, strokes, settings) -> Promise<Card>     resolves once Gochi Hand and Figtree are ready (never hangs, 2.5 s cap)
 //     card.settings                    current settings, LU.DEFAULTS filled in (settings.when 0 = now)
 //     card.update(partial)             -> Promise<void>. Accepts finish, pen, glow, said, city, to, when. Caches that depend on
 //                                      them rebuild by themselves; a running preview redraws at once, even in its pause.
@@ -350,7 +350,7 @@
   // resolves once the handwriting font is ready (but never waits more than a moment)
   card.create = async function (sky, strokes, settings) {
     try {
-      await LU.finishes.loadFonts(2500); // Gochi Hand + Fraunces italic, capped at 2.5 s
+      await LU.finishes.loadFonts(2500); // Gochi Hand + Figtree, capped at 2.5 s
     } catch (e) { /* the fallback fonts are fine */ }
     return new Card(sky, strokes, settings);
   };
